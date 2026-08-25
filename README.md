@@ -1,4 +1,4 @@
-# dev-academy-spring-2026-exercise
+# dev-academy-autumn-2026-exercise
 
 This is the pre-assignment for Solita Dev Academy Finland Autumn 2026. But if you’re here just purely out of curiosity, feel free to snatch the idea and make your own app just for the fun of it!
 
