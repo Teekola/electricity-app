@@ -1,6 +1,6 @@
 # dev-academy-spring-2026-exercise
 
-This is the pre-assignment for Solita Dev Academy Finland March 2026. But if you’re here just purely out of curiosity, feel free to snatch the idea and make your own app just for the fun of it!
+This is the pre-assignment for Solita Dev Academy Finland Autumn 2026. But if you’re here just purely out of curiosity, feel free to snatch the idea and make your own app just for the fun of it!
 
 Let's imagine that you have received an interesting project offer to create a UI and a backend service for displaying data from electricity production, consumption and prices. 
 The exercise uses data that is owned by Fingrid and combines that with electricity price data from porssisahko.net. 
@@ -16,11 +16,11 @@ Please return the exercise as a link to github repository.
 
 ## Use of Generative AI Tools
 
-We believe in the value of generative AI tools and their role in modern software development. However, in this assignment we want to primarily assess the candidate’s **own problem-solving skills, coding abilities, and way of thinking**.
+We welcome the use of generative AI tools as part of modern software development and recognize that they can be valuable in supporting ideation, learning, and implementation.
 
-You may use generative AI tools in a supporting role (for example, to help understand documentation or explore ideas), but we expect the **solution and code to be largely your own work**.
+In this assignment, we are interested in understanding the candidate’s own problem-solving approach, coding skills, and way of thinking. You are encouraged to use generative AI tools during the assignment, but you should explain in the README where and how you used them.
 
-If you wish, you may also briefly describe **where and how you used any such tools** as part of the assignment.
+The submitted solution should reflect your own understanding and decisions, and you should be able to discuss and justify the work you present.
 
 # Stuff to do 
 
