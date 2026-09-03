@@ -1,0 +1,13 @@
+{
+  "name": "@repo/typescript-config",
+  "version": "0.0.0",
+  "private": true,
+  "files": [
+    "base.json",
+    "node.json"
+  ],
+  "devDependencies": {
+    "@tsconfig/node24": "~24.0.5",
+    "@tsconfig/strictest": "~2.0.8"
+  }
+}

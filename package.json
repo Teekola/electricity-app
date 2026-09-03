@@ -1,0 +1,40 @@
+{
+  "name": "electricity-app",
+  "private": true,
+  "packageManager": "pnpm@10.24.0",
+  "engines": {
+    "node": ">=24.19.0 <25"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "eslint": "~9.39.5",
+    "husky": "~9.1.7",
+    "lint-staged": "~17.4.1",
+    "prettier": "~3.9.6",
+    "turbo": "~2.10.12",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "~8.69.0"
+  },
+  "lint-staged": {
+    "{apps,packages}/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}": [
+      "prettier --write",
+      "eslint --fix --max-warnings 0 --flag v10_config_lookup_from_file"
+    ],
+    "./*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}": [
+      "prettier --write"
+    ],
+    "**/*.{json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
+  }
+}
