@@ -1,6 +1,7 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "ui": "tui",
+  "globalPassThroughEnv": ["NODE_ENV", "HOST", "PORT", "LOG_LEVEL"],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],

@@ -1,0 +1,24 @@
+import type { FastifyInstance } from "fastify";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+
+import { buildApp } from "../app.js";
+import { loadConfig } from "../config.js";
+
+describe("GET /health", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await buildApp(loadConfig({ NODE_ENV: "test", LOG_LEVEL: "silent" }));
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it("reports the service as live", async () => {
+    const response = await app.inject({ method: "GET", url: "/health" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual({ status: "ok" });
+  });
+});
