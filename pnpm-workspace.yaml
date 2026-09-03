@@ -1,3 +1,9 @@
 packages:
   - "apps/*"
   - "packages/*"
+
+# Native postinstall builds pnpm 10 blocks by default. sharp powers Next's image
+# optimisation, unrs-resolver backs eslint-config-next's import resolution.
+onlyBuiltDependencies:
+  - sharp
+  - unrs-resolver

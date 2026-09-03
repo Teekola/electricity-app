@@ -7,6 +7,10 @@ build/
 .next/
 out/
 *.tsbuildinfo
+next-env.d.ts
+
+# test output
+coverage/
 
 # caches
 .turbo/
