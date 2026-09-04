@@ -9,11 +9,12 @@ import {
   useTable,
 } from "@tanstack/react-table";
 import { ArrowDown, ArrowUp, ChevronsUpDown, TriangleAlert } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useOptimistic, useTransition } from "react";
+import type { ReactNode } from "react";
 
-import type { DailyStatistics, DailyStatisticsQuery } from "@repo/api-contract";
+import type { DailyStatistics } from "@repo/api-contract";
+import { DEFAULT_DAILY_STATISTICS_PAGE_SIZE } from "@repo/api-contract";
 
+import { useDailyStatisticsNavigation } from "@/components/daily-statistics-navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -25,9 +26,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { fromSortingState, toSearchParams, toSortingState } from "@/lib/daily-statistics-query";
+import { fromSortingState, toSortingState } from "@/lib/daily-statistics-query";
 import { formatDay, formatMwh, formatPrice, formatStreak } from "@/lib/format";
 import { describeIncompleteness } from "@/lib/incomplete-day";
+import { cn } from "@/lib/utils";
 
 interface ColumnMeta {
   readonly numeric?: boolean;
@@ -38,7 +40,6 @@ const columnMeta: ColumnMeta = { width: "w-auto" };
 const features = tableFeatures({ rowSortingFeature, columnMeta });
 const helper = createColumnHelper<typeof features, DailyStatistics>();
 
-/** Every id is a name from the contract's sort allowlist, which is what the URL carries. */
 const columns = helper.columns([
   helper.accessor("date", {
     id: "date",
@@ -74,27 +75,17 @@ const columns = helper.columns([
 
 export interface DailyStatisticsTableProps {
   readonly dailyStatistics: DailyStatistics[];
-  /** The query these rows answer. The table reads its ordering from it and writes it back. */
-  readonly query: DailyStatisticsQuery;
 }
 
-/** One row per Day. Sorting a header navigates; the server does the sorting. */
-export function DailyStatisticsTable({ dailyStatistics, query }: DailyStatisticsTableProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [isSorting, startSorting] = useTransition();
-  const [optimisticSorting, setOptimisticSorting] = useOptimistic(toSortingState(query));
+export function DailyStatisticsTable({ dailyStatistics }: DailyStatisticsTableProps) {
+  const { isNavigating, query, goTo } = useDailyStatisticsNavigation();
+  const sorting = toSortingState(query);
 
   function handleSortingChange(updater: Updater<SortingState>): void {
-    const next = typeof updater === "function" ? updater(optimisticSorting) : updater;
-    const params = toSearchParams(fromSortingState(next, query));
-
-    // A transition, so the navigation reports as pending while the old rows still show.
-    startSorting(() => {
-      setOptimisticSorting(next);
-      router.push(`${pathname}?${params.toString()}`);
-    });
+    goTo(fromSortingState(typeof updater === "function" ? updater(sorting) : updater, query));
   }
+
+  const isEmpty = !isNavigating && dailyStatistics.length === 0;
 
   const table = useTable({
     features,
@@ -102,13 +93,14 @@ export function DailyStatisticsTable({ dailyStatistics, query }: DailyStatistics
     data: dailyStatistics,
     manualSorting: true,
     enableSortingRemoval: false,
-    state: { sorting: optimisticSorting },
+    state: { sorting },
     onSortingChange: handleSortingChange,
   });
 
   return (
     <DailyStatisticsTableFrame
-      busy={isSorting}
+      busy={isNavigating}
+      fill={isEmpty}
       header={table.getHeaderGroups().map((group) => (
         <TableRow key={group.id}>
           {group.headers.map((header) => (
@@ -125,8 +117,8 @@ export function DailyStatisticsTable({ dailyStatistics, query }: DailyStatistics
         </TableRow>
       ))}
     >
-      {isSorting ? (
-        <PlaceholderRows count={dailyStatistics.length || PLACEHOLDER_ROWS} />
+      {isNavigating ? (
+        <PlaceholderRows count={query.pageSize} />
       ) : (
         table.getRowModel().rows.map((row) => (
           <TableRow key={row.id}>
@@ -141,9 +133,12 @@ export function DailyStatisticsTable({ dailyStatistics, query }: DailyStatistics
           </TableRow>
         ))
       )}
-      {!isSorting && dailyStatistics.length === 0 && (
-        <TableRow>
-          <TableCell colSpan={columns.length} className="py-12 text-center text-muted-foreground">
+      {isEmpty && (
+        <TableRow className="hover:bg-transparent">
+          <TableCell
+            colSpan={columns.length}
+            className="text-center align-middle text-muted-foreground"
+          >
             No days match this filter.
           </TableCell>
         </TableRow>
@@ -169,7 +164,7 @@ export function DailyStatisticsTableSkeleton() {
         </TableRow>
       }
     >
-      <PlaceholderRows count={PLACEHOLDER_ROWS} />
+      <PlaceholderRows count={DEFAULT_DAILY_STATISTICS_PAGE_SIZE} />
     </DailyStatisticsTableFrame>
   );
 }
@@ -177,15 +172,17 @@ export function DailyStatisticsTableSkeleton() {
 function DailyStatisticsTableFrame({
   header,
   busy,
+  fill,
   children,
 }: {
   readonly header: ReactNode;
   readonly busy?: boolean;
+  readonly fill?: boolean;
   readonly children: ReactNode;
 }) {
   return (
     <Table
-      className="min-w-212 table-fixed"
+      className={cn("min-w-212 table-fixed", fill && "h-full")}
       containerClassName="min-h-64 flex-1 overflow-y-auto  border pr-1 [scrollbar-gutter:stable]"
     >
       <colgroup>
@@ -217,7 +214,7 @@ function HeaderCell({
       <Button
         variant="ghost"
         size="sm"
-        className={`h-8 ${numeric ? "-mr-2" : "-ml-2"}`}
+        className={cn("h-8", numeric ? "-mr-2" : "-ml-2")}
         disabled={!onToggle}
         onClick={onToggle}
       >
@@ -233,19 +230,16 @@ function PlaceholderRows({ count }: { readonly count: number }) {
     <TableRow key={row}>
       {columns.map((column) => (
         <TableCell key={column.id}>
-          <Skeleton className={`h-4 w-16 ${column.meta?.numeric ? "ml-auto" : ""}`} />
+          <Skeleton className={cn("h-4 w-16", column.meta?.numeric && "ml-auto")} />
         </TableCell>
       ))}
     </TableRow>
   ));
 }
 
-/** Every header in this table is a plain string; the type allows a render function too. */
 function columnLabel({ header }: { header?: unknown }): string {
   return typeof header === "string" ? header : "";
 }
-
-const PLACEHOLDER_ROWS = 50;
 
 function ariaSort(direction: false | "asc" | "desc") {
   if (direction === false) return undefined;

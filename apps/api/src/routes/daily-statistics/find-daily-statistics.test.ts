@@ -189,11 +189,26 @@ describe("findDailyStatistics", () => {
       expect(pagination.totalPages).toBe(Math.ceil(pagination.totalDays / pagination.pageSize));
     });
 
-    it("returns no Days past the last page", async () => {
-      const { pagination } = await find({ pageSize: 1 });
-      const { dailyStatistics } = await find({ page: pagination.totalPages + 1, pageSize: 1 });
+    it("answers a page past the end with the last page, so a stale URL is never blank", async () => {
+      const pageSize = 400;
+      const { pagination } = await find({ pageSize });
+      const [beyond, last] = await Promise.all([
+        find({ page: pagination.totalPages + 5, pageSize }),
+        find({ page: pagination.totalPages, pageSize }),
+      ]);
 
-      expect(dailyStatistics).toEqual([]);
+      expect(beyond.pagination.page).toBe(pagination.totalPages);
+      expect(beyond.dailyStatistics).toEqual(last.dailyStatistics);
+    });
+
+    it("stays on page 1 when no Day matches, rather than clamping to page 0", async () => {
+      const { pagination } = await find({
+        page: 4,
+        dateFrom: "2019-01-01",
+        dateTo: "2019-01-31",
+      });
+
+      expect(pagination).toMatchObject({ page: 1, totalDays: 0, totalPages: 0 });
     });
   });
 

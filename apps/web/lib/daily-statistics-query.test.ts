@@ -5,6 +5,7 @@ import {
   parseDailyStatisticsQuery,
   toSearchParams,
   toSortingState,
+  withPageSize,
 } from "./daily-statistics-query";
 
 /** A query that shares no field with the contract's defaults, so no assertion can pass by accident. */
@@ -55,6 +56,20 @@ describe("parseDailyStatisticsQuery", () => {
     });
   });
 
+  it("clamps a page size past the contract's maximum instead of dropping it", () => {
+    const query = parseDailyStatisticsQuery({ page: "3", pageSize: "250" });
+
+    expect(query).toMatchObject({ page: 3, pageSize: 200 });
+  });
+
+  it("clamps a page size of zero to one page rather than dropping it", () => {
+    expect(parseDailyStatisticsQuery({ pageSize: "0" })).toMatchObject({ pageSize: 1 });
+  });
+
+  it("still falls back to the default page size when the URL carries nonsense", () => {
+    expect(parseDailyStatisticsQuery({ pageSize: "fifty" })).toMatchObject({ pageSize: 50 });
+  });
+
   it("drops a repeated parameter rather than guessing which one was meant", () => {
     const query = parseDailyStatisticsQuery({
       sortDirection: ["asc", "desc"],
@@ -94,6 +109,21 @@ describe("toSearchParams", () => {
 
     expect(params.has("dateFrom")).toBe(false);
     expect(params.has("dateTo")).toBe(false);
+  });
+});
+
+describe("withPageSize", () => {
+  it("returns to the first page, because a position means nothing at another size", () => {
+    expect(withPageSize(CHOSEN, 100)).toEqual({ ...CHOSEN, page: 1, pageSize: 100 });
+  });
+
+  it("keeps the ordering and the date range the reader chose", () => {
+    expect(withPageSize(CHOSEN, 25)).toMatchObject({
+      sortBy: "averagePriceCentsPerKwh",
+      sortDirection: "asc",
+      dateFrom: "2024-01-01",
+      dateTo: "2024-01-31",
+    });
   });
 });
 

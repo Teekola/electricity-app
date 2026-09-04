@@ -1,5 +1,8 @@
 import type { ReactNode } from "react";
 
+import { DailyStatisticsNavigationProvider } from "@/components/daily-statistics-navigation";
+import { DailyStatisticsPageSize } from "@/components/daily-statistics-page-size";
+import { DailyStatisticsPagination } from "@/components/daily-statistics-pagination";
 import {
   DailyStatisticsTable,
   DailyStatisticsTableSkeleton,
@@ -19,15 +22,25 @@ export async function DailyStatistics({ searchParams }: DailyStatisticsProps) {
   const lastOnPage = firstOnPage + dailyStatistics.length - 1;
 
   return (
-    <DailyStatisticsLayout
-      footer={
-        <p className="text-sm text-muted-foreground">
-          Showing days {firstOnPage}–{lastOnPage} of {pagination.totalDays}.
-        </p>
-      }
-    >
-      <DailyStatisticsTable dailyStatistics={dailyStatistics} query={query} />
-    </DailyStatisticsLayout>
+    <DailyStatisticsNavigationProvider query={{ ...query, page: pagination.page }}>
+      <DailyStatisticsLayout
+        footer={
+          <div className="flex min-h-9 shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2">
+            <p className="text-sm text-muted-foreground">
+              {pagination.totalDays === 0
+                ? "No days to show."
+                : `Showing days ${firstOnPage}–${lastOnPage} of ${pagination.totalDays}.`}
+            </p>
+            <div className="flex items-center gap-2">
+              <DailyStatisticsPageSize />
+              <DailyStatisticsPagination pagination={pagination} />
+            </div>
+          </div>
+        }
+      >
+        <DailyStatisticsTable dailyStatistics={dailyStatistics} />
+      </DailyStatisticsLayout>
+    </DailyStatisticsNavigationProvider>
   );
 }
 
@@ -49,7 +62,8 @@ function DailyStatisticsLayout({
   return (
     <section className="flex min-h-0 flex-1 flex-col gap-3">
       {children}
-      <div className="flex h-9 shrink-0 items-center justify-between">{footer}</div>
+
+      {footer}
     </section>
   );
 }

@@ -1,7 +1,22 @@
 import type { SortingState } from "@tanstack/react-table";
+import * as z from "zod";
 
 import type { DailyStatisticsQuery } from "@repo/api-contract";
-import { dailyStatisticsQuerySchema, dailyStatisticsSortColumnSchema } from "@repo/api-contract";
+import {
+  dailyStatisticsQuerySchema,
+  dailyStatisticsSortColumnSchema,
+  MAX_DAILY_STATISTICS_PAGE_SIZE,
+} from "@repo/api-contract";
+
+/**
+ * A hand-typed page size outside the contract's bounds is clamped rather than dropped: dropping
+ * it would fall back to the default size while keeping the page number the larger size implied,
+ * which reads as the size having been ignored.
+ */
+const clampedPageSizeSchema = z.coerce
+  .number()
+  .int()
+  .transform((size) => Math.min(Math.max(size, 1), MAX_DAILY_STATISTICS_PAGE_SIZE));
 
 /** The search params Next hands a page: a repeated parameter arrives as an array. */
 export type SearchParams = Record<string, string | string[] | undefined>;
@@ -11,7 +26,9 @@ export type SearchParams = Record<string, string | string[] | undefined>;
 export function parseDailyStatisticsQuery(searchParams: SearchParams): DailyStatisticsQuery {
   const fields = Object.fromEntries(
     Object.entries(dailyStatisticsQuerySchema.shape).flatMap(([field, schema]) => {
-      const result = schema.safeParse(searchParams[field]);
+      const result = (field === "pageSize" ? clampedPageSizeSchema : schema).safeParse(
+        searchParams[field],
+      );
 
       return result.success ? [[field, result.data]] : [];
     }),
@@ -34,6 +51,11 @@ export function toSearchParams(query: DailyStatisticsQuery): URLSearchParams {
   }
 
   return params;
+}
+
+/** The same list at a new page size. A position means nothing at another size, so the page resets. */
+export function withPageSize(query: DailyStatisticsQuery, pageSize: number): DailyStatisticsQuery {
+  return { ...query, page: 1, pageSize };
 }
 
 /** The same ordering, in the shape the table's headers read. */

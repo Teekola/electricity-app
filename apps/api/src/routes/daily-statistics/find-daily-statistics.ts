@@ -136,14 +136,21 @@ export async function findDailyStatistics(
   ]);
 
   const [{ totalDays: days }] = totalDaysRowsSchema.parse(totals);
+  const totalPages = Math.ceil(days / query.pageSize);
+
+  // A page past the end is a stale link, not an error, so it answers with the last page. The
+  // count is only known now, so the common case still costs the two parallel queries above.
+  const page = Math.min(query.page, Math.max(totalPages, 1));
 
   return {
-    dailyStatistics: dailyStatisticsRowsSchema.parse(rows),
+    dailyStatistics: dailyStatisticsRowsSchema.parse(
+      page === query.page ? rows : await prisma.$queryRaw(dailyStatistics({ ...query, page })),
+    ),
     pagination: {
-      page: query.page,
+      page,
       pageSize: query.pageSize,
       totalDays: days,
-      totalPages: Math.ceil(days / query.pageSize),
+      totalPages,
     },
   };
 }

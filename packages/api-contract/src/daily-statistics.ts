@@ -35,10 +35,21 @@ export const sortDirectionSchema = z.enum(["asc", "desc"]);
 
 export type SortDirection = z.infer<typeof sortDirectionSchema>;
 
+export const DAILY_STATISTICS_PAGE_SIZES = [25, 50, 100, 200] as const;
+
+export const DEFAULT_DAILY_STATISTICS_PAGE_SIZE = 50;
+
+export const MAX_DAILY_STATISTICS_PAGE_SIZE = 200;
+
 export const dailyStatisticsQuerySchema = z
   .object({
     page: z.coerce.number().int().positive().default(1),
-    pageSize: z.coerce.number().int().positive().max(200).default(50),
+    pageSize: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(MAX_DAILY_STATISTICS_PAGE_SIZE)
+      .default(DEFAULT_DAILY_STATISTICS_PAGE_SIZE),
     sortBy: dailyStatisticsSortColumnSchema.default("date"),
     sortDirection: sortDirectionSchema.default("desc"),
     dateFrom: isoDateSchema.optional(),
