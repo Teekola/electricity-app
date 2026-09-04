@@ -1,6 +1,6 @@
 # Coding Standards
 
-A comment earns its place by carrying a **why** the code cannot: the constraint that forced this shape, the upstream bug being worked around, the reason the obvious approach fails. When it is already obvious from the code, the code says it — sharpen names and narrow types over adding a comment.
+Comments should be rare: only explain non-obvious why that cannot be expressed clearly in the code. Prefer clear names and types; otherwise, don't comment.
 
 TSDoc (`/** ... */`) on exported functions, complex generics, and public API boundaries, so the description shows on IDE hover.
 
