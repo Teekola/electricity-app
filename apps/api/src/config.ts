@@ -9,10 +9,7 @@ const environmentSchema = z.object({
 
 export type Config = z.infer<typeof environmentSchema>;
 
-/**
- * Parses the environment, exiting if it is invalid. A function rather than an eagerly
- * evaluated constant, so importing this module cannot exit the process.
- */
+/** Parses the environment, exiting the process if it is invalid. */
 export function loadConfig(environment: NodeJS.ProcessEnv = process.env): Config {
   const result = environmentSchema.safeParse(environment);
 

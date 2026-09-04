@@ -11,7 +11,6 @@ export const dailyStatisticsSchema = z.object({
   averagePriceCentsPerKwh: z.number().nullable(),
   longestNegativePriceStreakHours: z.number().int().nonnegative(),
   hoursWithData: z.number().int().positive(),
-  /** 23 on spring-forward, 25 on autumn fall-back, 24 on every other day. */
   hoursInDay: z.number().int().positive(),
 });
 
