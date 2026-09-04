@@ -1,7 +1,6 @@
 import * as z from "zod";
 
 export const isoDateSchema = z.iso.date();
-
 export type IsoDate = z.infer<typeof isoDateSchema>;
 
 export const dailyStatisticsSchema = z.object({
@@ -55,7 +54,6 @@ export type DailyStatisticsQuery = z.infer<typeof dailyStatisticsQuerySchema>;
 export const paginationSchema = z.object({
   page: z.number().int().positive(),
   pageSize: z.number().int().positive(),
-  /** Days matching the filter, before pagination. */
   totalDays: z.number().int().nonnegative(),
   totalPages: z.number().int().nonnegative(),
 });

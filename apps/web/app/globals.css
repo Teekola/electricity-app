@@ -129,5 +129,9 @@
   }
   html {
     @apply font-sans;
+    /* Both properties inherit, so the table's own scroller matches the page's. Left to
+       themselves, Chrome and Firefox disagree on a bar's width and its track colour. */
+    scrollbar-width: thin;
+    scrollbar-color: var(--muted-foreground) transparent;
   }
 }
