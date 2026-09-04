@@ -26,12 +26,13 @@ WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=pruner /repo/.npmrc ./
 COPY --from=pruner /repo/out/json/ ./
-# Installed fresh rather than copied from the builder, so devDependencies never reach the
-# image. --filter excludes the root ones; the store goes in the same layer or it is
-# baked in forever, and node_modules hardlinks into it so the files survive.
-RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter=@repo/api \
+# Every workspace package the runtime needs must be named, or its symlink is left broken.
+# The store is removed in this same layer or it stays in the image.
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts \
+  --filter=@repo/api --filter=@repo/api-contract \
   && rm -rf "$PNPM_HOME"
 COPY --from=builder /repo/apps/api/dist ./apps/api/dist
+COPY --from=builder /repo/packages/api-contract/dist ./packages/api-contract/dist
 
 USER node
 EXPOSE 3001
