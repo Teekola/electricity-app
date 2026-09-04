@@ -1,0 +1,23 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// One hour of measured production, consumption and price. Every @map here is a rename
+/// of the dataset's own lowercase column names, never a schema change.
+model ElectricityData {
+  id                BigInt    @id
+  date              DateTime? @db.Date
+  startTime         DateTime? @map("starttime") @db.Timestamp(6)
+  productionAmount  Decimal?  @map("productionamount") @db.Decimal(11, 5)
+  consumptionAmount Decimal?  @map("consumptionamount") @db.Decimal(11, 3)
+  hourlyPrice       Decimal?  @map("hourlyprice") @db.Decimal(6, 3)
+
+  @@index([date])
+  @@index([startTime])
+  @@map("electricitydata")
+}

@@ -32,6 +32,7 @@ services:
       HOST: 0.0.0.0
       PORT: 3001
       LOG_LEVEL: info
+      DATABASE_URL: postgresql://academy:academy@db:5432/electricity
     ports:
       - 3001:3001
     depends_on:

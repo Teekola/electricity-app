@@ -4,13 +4,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { apiErrorSchema } from "@repo/api-contract";
 
 import { buildApp } from "./app.js";
-import { loadConfig } from "./config.js";
 
 describe("error responses", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
-    app = await buildApp(loadConfig({ NODE_ENV: "test", LOG_LEVEL: "silent" }));
+    app = await buildApp();
   });
 
   afterAll(async () => {

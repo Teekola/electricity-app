@@ -1,6 +1,7 @@
 import Fastify, { type FastifyInstance, type FastifyServerOptions } from "fastify";
 import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod";
 
+import prismaPlugin from "./plugins/prisma.js";
 import { healthRoutes } from "./routes/health.js";
 import { type Config, loadConfig } from "./config.js";
 import { registerErrorHandling } from "./errors.js";
@@ -28,6 +29,7 @@ export async function buildApp(config: Config = loadConfig()): Promise<FastifyIn
 
   registerErrorHandling(app);
 
+  await app.register(prismaPlugin, { config });
   await app.register(healthRoutes);
 
   return app;
