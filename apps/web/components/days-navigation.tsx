@@ -10,33 +10,30 @@ import {
   useTransition,
 } from "react";
 
-import type { DailyStatisticsQuery } from "@repo/api-contract";
+import type { DaysQuery } from "@repo/api-contract";
 
-import { toSearchParams } from "@/lib/daily-statistics-query";
+import { toSearchParams } from "@/lib/days-query";
 
-interface DailyStatisticsNavigation {
+interface DaysNavigation {
   readonly isNavigating: boolean;
-  readonly query: DailyStatisticsQuery;
-  readonly goTo: (query: DailyStatisticsQuery) => void;
+  readonly query: DaysQuery;
+  readonly goTo: (query: DaysQuery) => void;
 }
 
-const NavigationContext = createContext<DailyStatisticsNavigation | null>(null);
+const NavigationContext = createContext<DaysNavigation | null>(null);
 
-export interface DailyStatisticsNavigationProviderProps {
-  readonly query: DailyStatisticsQuery;
+export interface DaysNavigationProviderProps {
+  readonly query: DaysQuery;
   readonly children: ReactNode;
 }
 
-export function DailyStatisticsNavigationProvider({
-  query,
-  children,
-}: DailyStatisticsNavigationProviderProps) {
+export function DaysNavigationProvider({ query, children }: DaysNavigationProviderProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [isNavigating, startNavigating] = useTransition();
   const [optimisticQuery, setOptimisticQuery] = useOptimistic(query);
 
-  const navigation = useMemo<DailyStatisticsNavigation>(
+  const navigation = useMemo<DaysNavigation>(
     () => ({
       isNavigating,
       query: optimisticQuery,
@@ -58,11 +55,11 @@ export function DailyStatisticsNavigationProvider({
   return <NavigationContext value={navigation}>{children}</NavigationContext>;
 }
 
-export function useDailyStatisticsNavigation(): DailyStatisticsNavigation {
+export function useDaysNavigation(): DaysNavigation {
   const navigation = useContext(NavigationContext);
 
   if (navigation === null) {
-    throw new Error("useDailyStatisticsNavigation used outside DailyStatisticsNavigationProvider");
+    throw new Error("useDaysNavigation used outside DaysNavigationProvider");
   }
 
   return navigation;

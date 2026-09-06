@@ -4,17 +4,17 @@ import {
   filteredMeasures,
   hasFilters,
   measureRanges,
-  parseDailyStatisticsQuery,
+  parseDaysQuery,
   toSearchParams,
   withDateRange,
   withMeasureRanges,
   withoutFilters,
   withoutMeasure,
   withPageSize,
-} from "./daily-statistics-query";
+} from "./days-query";
 
 /** A query that shares no field with the contract's defaults, so no assertion can pass by accident. */
-const CHOSEN = parseDailyStatisticsQuery({
+const CHOSEN = parseDaysQuery({
   page: "3",
   size: "10",
   sort: "price",
@@ -23,7 +23,7 @@ const CHOSEN = parseDailyStatisticsQuery({
   dateTo: "2024-01-31",
 });
 
-const FILTERED = parseDailyStatisticsQuery({
+const FILTERED = parseDaysQuery({
   ...{ dateFrom: "2024-01-01", dateTo: "2024-01-31" },
   prodMin: "8000",
   consMax: "500",
@@ -32,9 +32,9 @@ const FILTERED = parseDailyStatisticsQuery({
   streakMin: "3",
 });
 
-describe("parseDailyStatisticsQuery", () => {
+describe("parseDaysQuery", () => {
   it("falls back to the contract's defaults when the URL carries nothing", () => {
-    expect(parseDailyStatisticsQuery({})).toEqual({
+    expect(parseDaysQuery({})).toEqual({
       page: 1,
       size: 50,
       sort: "date",
@@ -67,7 +67,7 @@ describe("parseDailyStatisticsQuery", () => {
   });
 
   it("drops a hand-edited sort column the API would reject, keeping the other choices", () => {
-    const query = parseDailyStatisticsQuery({
+    const query = parseDaysQuery({
       sort: "hoursWithData",
       dir: "asc",
       size: "10",
@@ -84,7 +84,7 @@ describe("parseDailyStatisticsQuery", () => {
   });
 
   it("drops a streak of at least zero hours a URL carries, so it shows as no filter at all", () => {
-    const query = parseDailyStatisticsQuery({ streakMin: "0", size: "10" });
+    const query = parseDaysQuery({ streakMin: "0", size: "10" });
 
     expect(query.streakMin).toBeUndefined();
     expect(filteredMeasures(query)).toEqual([]);
@@ -93,40 +93,40 @@ describe("parseDailyStatisticsQuery", () => {
   });
 
   it("reads a blank bound a URL carries as no bound, not as zero", () => {
-    const query = parseDailyStatisticsQuery({ priceMin: " ", consMax: "" });
+    const query = parseDaysQuery({ priceMin: " ", consMax: "" });
 
     expect(filteredMeasures(query)).toEqual([]);
     expect(hasFilters(query)).toBe(false);
   });
 
   it("drops a bound that is not a number, keeping the other choices", () => {
-    const query = parseDailyStatisticsQuery({ priceMin: "cheap", streakMin: "3", size: "10" });
+    const query = parseDaysQuery({ priceMin: "cheap", streakMin: "3", size: "10" });
 
     expect(query).toEqual({ page: 1, size: 10, sort: "date", dir: "desc", streakMin: 3 });
   });
 
   it("clamps a page size past the contract's maximum instead of dropping it", () => {
-    const query = parseDailyStatisticsQuery({ page: "3", size: "250" });
+    const query = parseDaysQuery({ page: "3", size: "250" });
 
     expect(query).toMatchObject({ page: 3, size: 200 });
   });
 
   it("clamps a page size of zero to one page rather than dropping it", () => {
-    expect(parseDailyStatisticsQuery({ size: "0" })).toMatchObject({ size: 1 });
+    expect(parseDaysQuery({ size: "0" })).toMatchObject({ size: 1 });
   });
 
   it("still falls back to the default page size when the URL carries nonsense", () => {
-    expect(parseDailyStatisticsQuery({ size: "fifty" })).toMatchObject({ size: 50 });
+    expect(parseDaysQuery({ size: "fifty" })).toMatchObject({ size: 50 });
   });
 
   it("drops a repeated parameter rather than guessing which one was meant", () => {
-    const query = parseDailyStatisticsQuery({ dir: ["asc", "desc"], sort: "prod" });
+    const query = parseDaysQuery({ dir: ["asc", "desc"], sort: "prod" });
 
     expect(query).toMatchObject({ sort: "prod", dir: "desc" });
   });
 
   it("drops both bounds of a Day range that runs backwards, and only those", () => {
-    const query = parseDailyStatisticsQuery({
+    const query = parseDaysQuery({
       sort: "price",
       dir: "asc",
       size: "10",
@@ -143,7 +143,7 @@ describe("parseDailyStatisticsQuery", () => {
     ["priceMin", "priceMax"],
     ["streakMin", "streakMax"],
   ])("drops %s and %s when that one range runs backwards, and only those", (min, max) => {
-    const query = parseDailyStatisticsQuery({
+    const query = parseDaysQuery({
       [min]: "9",
       [max]: "2",
       dateFrom: "2024-01-01",
@@ -160,11 +160,11 @@ describe("toSearchParams", () => {
   it("reproduces the query it was given", () => {
     const params = toSearchParams(FILTERED);
 
-    expect(parseDailyStatisticsQuery(Object.fromEntries(params.entries()))).toEqual(FILTERED);
+    expect(parseDaysQuery(Object.fromEntries(params.entries()))).toEqual(FILTERED);
   });
 
   it("asks for nothing at all for the default view", () => {
-    expect(toSearchParams(parseDailyStatisticsQuery({})).toString()).toBe("");
+    expect(toSearchParams(parseDaysQuery({})).toString()).toBe("");
   });
 
   it("leaves out a bound the query does not carry", () => {
@@ -175,7 +175,7 @@ describe("toSearchParams", () => {
   });
 
   it("carries a choice that only happens to look like a default of another field", () => {
-    const params = toSearchParams(parseDailyStatisticsQuery({ streakMin: "1", page: "1" }));
+    const params = toSearchParams(parseDaysQuery({ streakMin: "1", page: "1" }));
 
     expect(params.get("streakMin")).toBe("1");
     expect(params.has("page")).toBe(false);
@@ -285,7 +285,7 @@ describe("filteredMeasures", () => {
   });
 
   it("names a measure with only one bound", () => {
-    expect(filteredMeasures(parseDailyStatisticsQuery({ consMax: "500" }))).toEqual(["cons"]);
+    expect(filteredMeasures(parseDaysQuery({ consMax: "500" }))).toEqual(["cons"]);
   });
 
   it("names nothing when only the Day range is set", () => {
@@ -295,7 +295,7 @@ describe("filteredMeasures", () => {
 
 describe("hasFilters", () => {
   it("is false for the default view", () => {
-    expect(hasFilters(parseDailyStatisticsQuery({}))).toBe(false);
+    expect(hasFilters(parseDaysQuery({}))).toBe(false);
   });
 
   it("is true for a Day range alone", () => {
@@ -303,12 +303,10 @@ describe("hasFilters", () => {
   });
 
   it("is true for a measure bound alone", () => {
-    expect(hasFilters(parseDailyStatisticsQuery({ streakMin: "1" }))).toBe(true);
+    expect(hasFilters(parseDaysQuery({ streakMin: "1" }))).toBe(true);
   });
 
   it("ignores the ordering and the page, which are not filters", () => {
-    expect(hasFilters(parseDailyStatisticsQuery({ page: "3", sort: "price", dir: "asc" }))).toBe(
-      false,
-    );
+    expect(hasFilters(parseDaysQuery({ page: "3", sort: "price", dir: "asc" }))).toBe(false);
   });
 });

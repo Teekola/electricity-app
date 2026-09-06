@@ -2,15 +2,15 @@ import * as z from "zod";
 
 import type {
   DailyStatistics,
-  DailyStatisticsList,
-  DailyStatisticsQuery,
-  DailyStatisticsSortColumn,
+  DaysList,
+  DaysQuery,
+  DaysSortColumn,
   SortDirection,
 } from "@repo/api-contract";
 import {
-  DAILY_STATISTICS_MEASURE_BOUNDS,
   DAILY_STATISTICS_MEASURES,
   dailyStatisticsSchema,
+  DAYS_MEASURE_BOUNDS,
   FINNISH_TIME_ZONE,
 } from "@repo/api-contract";
 
@@ -18,7 +18,7 @@ import type { PrismaClient } from "../../generated/prisma/client.js";
 import { Prisma } from "../../generated/prisma/client.js";
 
 /** A column is an identifier, where a bound parameter cannot go, so it is never interpolated. */
-const COLUMNS: Record<DailyStatisticsSortColumn, Prisma.Sql> = {
+const COLUMNS: Record<DaysSortColumn, Prisma.Sql> = {
   date: Prisma.sql`"date"`,
   prod: Prisma.sql`"totalProductionMwh"`,
   cons: Prisma.sql`"totalConsumptionMwh"`,
@@ -31,7 +31,7 @@ const SORT_DIRECTIONS: Record<SortDirection, Prisma.Sql> = {
   desc: Prisma.sql`DESC`,
 };
 
-function dateRange({ dateFrom, dateTo }: DailyStatisticsQuery): Prisma.Sql {
+function dateRange({ dateFrom, dateTo }: DaysQuery): Prisma.Sql {
   return Prisma.join(
     [
       dateFrom === undefined ? Prisma.empty : Prisma.sql`AND date >= ${dateFrom}::date`,
@@ -42,9 +42,9 @@ function dateRange({ dateFrom, dateTo }: DailyStatisticsQuery): Prisma.Sql {
 }
 
 /** Measures exist only once the Data Points are aggregated, so their bounds cannot join above. */
-function measureRangeFilter(query: DailyStatisticsQuery): Prisma.Sql {
+function measureRangeFilter(query: DaysQuery): Prisma.Sql {
   const bounds = DAILY_STATISTICS_MEASURES.flatMap((measure) => {
-    const [minimum, maximum] = DAILY_STATISTICS_MEASURE_BOUNDS[measure];
+    const [minimum, maximum] = DAYS_MEASURE_BOUNDS[measure];
     const column = COLUMNS[measure];
     const min = query[minimum];
     const max = query[maximum];
@@ -68,7 +68,7 @@ function measureRangeFilter(query: DailyStatisticsQuery): Prisma.Sql {
  * `COUNT` as a `BigInt`, neither of which `JSON.stringify` accepts, and a `DATE` would be
  * parsed into a `Date` in the process's own zone.
  */
-function matchingDays(query: DailyStatisticsQuery): Prisma.Sql {
+function matchingDays(query: DaysQuery): Prisma.Sql {
   return Prisma.sql`
     WITH data_points AS (
       SELECT
@@ -136,7 +136,7 @@ function matchingDays(query: DailyStatisticsQuery): Prisma.Sql {
 }
 
 /** The window count is computed before the LIMIT, so it counts every matching Day. */
-function dailyStatisticsPage(query: DailyStatisticsQuery): Prisma.Sql {
+function daysPage(query: DaysQuery): Prisma.Sql {
   return Prisma.sql`
     ${matchingDays(query)}
     SELECT *, COUNT(*) OVER ()::int AS "totalDays"
@@ -147,7 +147,7 @@ function dailyStatisticsPage(query: DailyStatisticsQuery): Prisma.Sql {
   `;
 }
 
-function matchingDayCount(query: DailyStatisticsQuery): Prisma.Sql {
+function matchingDayCount(query: DaysQuery): Prisma.Sql {
   return Prisma.sql`${matchingDays(query)} SELECT COUNT(*)::int AS "totalDays" FROM matching`;
 }
 
@@ -160,12 +160,12 @@ const pageTotalsSchema = z.array(totalDaysSchema);
 const countRowsSchema = z.tuple([totalDaysSchema]);
 
 /** Reads one page of Daily Statistics, aggregated per Day from the Data Points. */
-export async function findDailyStatistics(
+export async function findDaysWithStatistics(
   prisma: PrismaClient,
-  query: DailyStatisticsQuery,
-): Promise<DailyStatisticsList> {
+  query: DaysQuery,
+): Promise<DaysList> {
   // `$queryRaw` casts its result rather than checking it, hence the parses below.
-  const rows = await prisma.$queryRaw(dailyStatisticsPage(query));
+  const rows = await prisma.$queryRaw(daysPage(query));
   const [totals] = pageTotalsSchema.parse(rows);
 
   if (totals !== undefined) {
@@ -179,17 +179,17 @@ export async function findDailyStatistics(
 
   if (served === query.page) return page(query, served, [], totalDays);
 
-  const lastPage = await prisma.$queryRaw(dailyStatisticsPage({ ...query, page: served }));
+  const lastPage = await prisma.$queryRaw(daysPage({ ...query, page: served }));
 
   return page(query, served, dailyStatisticsRowsSchema.parse(lastPage), totalDays);
 }
 
 function page(
-  query: DailyStatisticsQuery,
+  query: DaysQuery,
   page: number,
   dailyStatistics: DailyStatistics[],
   totalDays: number,
-): DailyStatisticsList {
+): DaysList {
   return {
     dailyStatistics,
     pagination: {

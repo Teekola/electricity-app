@@ -20,9 +20,9 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { DailyStatistics } from "@repo/api-contract";
-import { DEFAULT_DAILY_STATISTICS_PAGE_SIZE } from "@repo/api-contract";
+import { DEFAULT_DAYS_PAGE_SIZE } from "@repo/api-contract";
 
-import { useDailyStatisticsNavigation } from "@/components/daily-statistics-navigation";
+import { useDaysNavigation } from "@/components/days-navigation";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -34,9 +34,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { hasFilters, withoutFilters } from "@/lib/daily-statistics-query";
-import { fromSortingState, toSortingState } from "@/lib/daily-statistics-sorting";
 import { dayHref } from "@/lib/day-detail-links";
+import { hasFilters, withoutFilters } from "@/lib/days-query";
+import { fromSortingState, toSortingState } from "@/lib/days-sorting";
 import { formatDay, formatMwh, formatPrice, formatStreak } from "@/lib/format";
 import { describeIncompleteness } from "@/lib/incomplete-day";
 import { cn } from "@/lib/utils";
@@ -88,7 +88,7 @@ export interface DailyStatisticsTableProps {
 }
 
 export function DailyStatisticsTable({ dailyStatistics }: DailyStatisticsTableProps) {
-  const { isNavigating, query, goTo } = useDailyStatisticsNavigation();
+  const { isNavigating, query, goTo } = useDaysNavigation();
   const sorting = toSortingState(query);
 
   function handleSortingChange(updater: Updater<SortingState>): void {
@@ -172,7 +172,7 @@ export interface DailyStatisticsTableSkeletonProps {
 }
 
 export function DailyStatisticsTableSkeleton({
-  size = DEFAULT_DAILY_STATISTICS_PAGE_SIZE,
+  size = DEFAULT_DAYS_PAGE_SIZE,
 }: DailyStatisticsTableSkeletonProps) {
   return (
     <DailyStatisticsTableFrame
@@ -281,7 +281,7 @@ function SortIcon({ direction }: { readonly direction: false | "asc" | "desc" })
 }
 
 function DayCell({ day }: { readonly day: DailyStatistics }) {
-  const { query } = useDailyStatisticsNavigation();
+  const { query } = useDaysNavigation();
   const explanation = describeIncompleteness(day);
 
   return (

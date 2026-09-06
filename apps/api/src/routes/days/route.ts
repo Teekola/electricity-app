@@ -1,15 +1,15 @@
 import type { FastifyInstance } from "fastify";
 import type { ZodTypeProvider } from "fastify-type-provider-zod";
 
-import type { ApiEndpointPath, DailyStatisticsList } from "@repo/api-contract";
+import type { ApiEndpointPath, DaysList } from "@repo/api-contract";
 import { apiEndpoints } from "@repo/api-contract";
 
-import { findDailyStatistics } from "./find-daily-statistics.js";
+import { findDaysWithStatistics } from "./find-days-with-statistics.js";
 
-const path = "/daily-statistics" as const satisfies ApiEndpointPath;
+const path = "/days" as const satisfies ApiEndpointPath;
 const endpoint = apiEndpoints[path];
 
-export function dailyStatisticsRoutes(app: FastifyInstance): void {
+export function daysRoutes(app: FastifyInstance): void {
   const api = app.withTypeProvider<ZodTypeProvider>();
   api.get(
     path,
@@ -19,6 +19,6 @@ export function dailyStatisticsRoutes(app: FastifyInstance): void {
         response: { 200: endpoint.response },
       },
     },
-    (request): Promise<DailyStatisticsList> => findDailyStatistics(app.prisma, request.query),
+    (request): Promise<DaysList> => findDaysWithStatistics(app.prisma, request.query),
   );
 }

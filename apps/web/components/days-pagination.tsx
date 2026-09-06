@@ -4,7 +4,7 @@ import type { MouseEvent } from "react";
 
 import type { Pagination as PaginationMeta } from "@repo/api-contract";
 
-import { useDailyStatisticsNavigation } from "@/components/daily-statistics-navigation";
+import { useDaysNavigation } from "@/components/days-navigation";
 import {
   Pagination,
   PaginationContent,
@@ -14,16 +14,16 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
-import { toSearchParams } from "@/lib/daily-statistics-query";
+import { toSearchParams } from "@/lib/days-query";
 import { paginationItems } from "@/lib/pagination-items";
 
-export interface DailyStatisticsPaginationProps {
+export interface DaysPaginationProps {
   readonly pagination: PaginationMeta;
 }
 
-export function DailyStatisticsPagination({ pagination }: DailyStatisticsPaginationProps) {
+export function DaysPagination({ pagination }: DaysPaginationProps) {
   const { totalPages } = pagination;
-  const { isNavigating, query, goTo } = useDailyStatisticsNavigation();
+  const { isNavigating, query, goTo } = useDaysNavigation();
   // A URL can ask for a page past the end, which the API clamps: mid-navigation the reader's
   // own choice is what to show, and once the rows land it is the page they actually came from.
   const page = isNavigating ? query.page : pagination.page;

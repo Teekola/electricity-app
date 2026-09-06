@@ -1,12 +1,12 @@
 import * as z from "zod";
 
-import type { DailyStatisticsMeasure, DailyStatisticsQuery, IsoDate } from "@repo/api-contract";
+import type { DailyStatisticsMeasure, DaysQuery, IsoDate } from "@repo/api-contract";
 import {
-  DAILY_STATISTICS_MEASURE_BOUNDS,
   DAILY_STATISTICS_MEASURES,
-  DAILY_STATISTICS_RANGES,
-  dailyStatisticsQuerySchema,
-  MAX_DAILY_STATISTICS_PAGE_SIZE,
+  DAYS_MEASURE_BOUNDS,
+  DAYS_QUERY_RANGES,
+  daysQuerySchema,
+  MAX_DAYS_PAGE_SIZE,
 } from "@repo/api-contract";
 
 /**
@@ -17,13 +17,13 @@ import {
 const clampedPageSizeSchema = z.coerce
   .number()
   .int()
-  .transform((size) => Math.min(Math.max(size, 1), MAX_DAILY_STATISTICS_PAGE_SIZE));
+  .transform((size) => Math.min(Math.max(size, 1), MAX_DAYS_PAGE_SIZE));
 
 const DEFAULTS = new Map<string, unknown>(
-  Object.entries(dailyStatisticsQuerySchema.parse({})).filter(([, value]) => value !== undefined),
+  Object.entries(daysQuerySchema.parse({})).filter(([, value]) => value !== undefined),
 );
 
-export type MeasureBound = (typeof DAILY_STATISTICS_MEASURE_BOUNDS)[DailyStatisticsMeasure][number];
+export type MeasureBound = (typeof DAYS_MEASURE_BOUNDS)[DailyStatisticsMeasure][number];
 
 export type MeasureRanges = Record<MeasureBound, number | undefined>;
 
@@ -34,9 +34,9 @@ export type SearchParams = Record<string, string | string[] | undefined>;
  * Each field falls back on its own, so one bad parameter cannot discard the reader's other
  * choices.
  */
-export function parseDailyStatisticsQuery(searchParams: SearchParams): DailyStatisticsQuery {
+export function parseDaysQuery(searchParams: SearchParams): DaysQuery {
   const fields = Object.fromEntries(
-    Object.entries(dailyStatisticsQuerySchema.shape).flatMap(([field, schema]) => {
+    Object.entries(daysQuerySchema.shape).flatMap(([field, schema]) => {
       const result = (field === "size" ? clampedPageSizeSchema : schema).safeParse(
         searchParams[field],
       );
@@ -45,11 +45,9 @@ export function parseDailyStatisticsQuery(searchParams: SearchParams): DailyStat
     }),
   );
 
-  const result = dailyStatisticsQuerySchema.safeParse(
-    withoutEmptyBounds(withOrderedRanges(fields)),
-  );
+  const result = daysQuerySchema.safeParse(withoutEmptyBounds(withOrderedRanges(fields)));
 
-  return result.success ? result.data : dailyStatisticsQuerySchema.parse({});
+  return result.success ? result.data : daysQuerySchema.parse({});
 }
 
 // A streak of at least zero hours excludes no Day, so a URL carrying one asks for no filter.
@@ -65,7 +63,7 @@ function withoutEmptyBounds(fields: Record<string, unknown>): Record<string, unk
 function withOrderedRanges(fields: Record<string, unknown>): Record<string, unknown> {
   const ordered = { ...fields };
 
-  for (const [minimum, maximum] of DAILY_STATISTICS_RANGES) {
+  for (const [minimum, maximum] of DAYS_QUERY_RANGES) {
     if (isOrdered(ordered[minimum], ordered[maximum])) continue;
 
     delete ordered[minimum];
@@ -82,7 +80,7 @@ function isOrdered(min: unknown, max: unknown): boolean {
   return true;
 }
 
-export function toSearchParams(query: DailyStatisticsQuery): URLSearchParams {
+export function toSearchParams(query: DaysQuery): URLSearchParams {
   const params = new URLSearchParams();
 
   for (const [field, value] of Object.entries(query)) {
@@ -95,22 +93,19 @@ export function toSearchParams(query: DailyStatisticsQuery): URLSearchParams {
   return params;
 }
 
-export function withPageSize(query: DailyStatisticsQuery, size: number): DailyStatisticsQuery {
+export function withPageSize(query: DaysQuery, size: number): DaysQuery {
   return { ...query, page: 1, size };
 }
 
 export function withDateRange(
-  query: DailyStatisticsQuery,
+  query: DaysQuery,
   dateFrom: IsoDate | undefined,
   dateTo: IsoDate | undefined,
-): DailyStatisticsQuery {
+): DaysQuery {
   return { ...query, page: 1, dateFrom, dateTo };
 }
 
-export function withMeasureRanges(
-  query: DailyStatisticsQuery,
-  ranges: MeasureRanges,
-): DailyStatisticsQuery {
+export function withMeasureRanges(query: DaysQuery, ranges: MeasureRanges): DaysQuery {
   // The parser drops a zero streak bound too; doing it here keeps the optimistic query honest
   // before the URL it produces is ever read back.
   return {
@@ -121,16 +116,13 @@ export function withMeasureRanges(
   };
 }
 
-export function withoutMeasure(
-  query: DailyStatisticsQuery,
-  measure: DailyStatisticsMeasure,
-): DailyStatisticsQuery {
-  const [minimum, maximum] = DAILY_STATISTICS_MEASURE_BOUNDS[measure];
+export function withoutMeasure(query: DaysQuery, measure: DailyStatisticsMeasure): DaysQuery {
+  const [minimum, maximum] = DAYS_MEASURE_BOUNDS[measure];
 
   return { ...query, page: 1, [minimum]: undefined, [maximum]: undefined };
 }
 
-export function withoutFilters(query: DailyStatisticsQuery): DailyStatisticsQuery {
+export function withoutFilters(query: DaysQuery): DaysQuery {
   return withDateRange(
     withMeasureRanges(
       query,
@@ -144,22 +136,22 @@ export function withoutFilters(query: DailyStatisticsQuery): DailyStatisticsQuer
 export function collectRanges(read: (bound: MeasureBound) => number | undefined): MeasureRanges {
   return Object.fromEntries(
     DAILY_STATISTICS_MEASURES.flatMap((measure) =>
-      DAILY_STATISTICS_MEASURE_BOUNDS[measure].map((bound) => [bound, read(bound)]),
+      DAYS_MEASURE_BOUNDS[measure].map((bound) => [bound, read(bound)]),
     ),
   ) as MeasureRanges; // `Object.fromEntries` widens the keys it was given back to `string`.
 }
 
-export function measureRanges(query: DailyStatisticsQuery): MeasureRanges {
+export function measureRanges(query: DaysQuery): MeasureRanges {
   return collectRanges((bound) => query[bound]);
 }
 
-export function filteredMeasures(query: DailyStatisticsQuery): DailyStatisticsMeasure[] {
+export function filteredMeasures(query: DaysQuery): DailyStatisticsMeasure[] {
   return DAILY_STATISTICS_MEASURES.filter((measure) =>
-    DAILY_STATISTICS_MEASURE_BOUNDS[measure].some((bound) => query[bound] !== undefined),
+    DAYS_MEASURE_BOUNDS[measure].some((bound) => query[bound] !== undefined),
   );
 }
 
-export function hasFilters(query: DailyStatisticsQuery): boolean {
+export function hasFilters(query: DaysQuery): boolean {
   return (
     query.dateFrom !== undefined || query.dateTo !== undefined || filteredMeasures(query).length > 0
   );

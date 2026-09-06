@@ -1,6 +1,6 @@
 import * as z from "zod";
 
-import { dailyStatisticsListSchema, dailyStatisticsQuerySchema } from "./daily-statistics.js";
+import { daysListSchema, daysQuerySchema } from "./days.js";
 import { healthSchema } from "./health.js";
 
 export const apiEndpoints = {
@@ -8,9 +8,9 @@ export const apiEndpoints = {
     query: z.object({}),
     response: healthSchema,
   },
-  "/daily-statistics": {
-    query: dailyStatisticsQuerySchema,
-    response: dailyStatisticsListSchema,
+  "/days": {
+    query: daysQuerySchema,
+    response: daysListSchema,
   },
 } as const;
 

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { describeDateRange, describeMeasureFilter } from "./daily-statistics-filters";
-import { parseDailyStatisticsQuery } from "./daily-statistics-query";
+import { describeDateRange, describeMeasureFilter } from "./days-filters";
+import { parseDaysQuery } from "./days-query";
 
-const query = (searchParams: Record<string, string>) => parseDailyStatisticsQuery(searchParams);
+const query = (searchParams: Record<string, string>) => parseDaysQuery(searchParams);
 
 describe("describeMeasureFilter", () => {
   it("names both bounds and the unit they are in", () => {

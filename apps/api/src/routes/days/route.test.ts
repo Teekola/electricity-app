@@ -1,11 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { dailyStatisticsListSchema } from "@repo/api-contract";
+import { daysListSchema } from "@repo/api-contract";
 
 import { buildApp } from "../../app.js";
 
-describe("GET /daily-statistics", () => {
+describe("GET /days", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
@@ -17,7 +17,7 @@ describe("GET /daily-statistics", () => {
   });
 
   function get(query: Record<string, string> = {}) {
-    return app.inject({ method: "GET", url: "/daily-statistics", query });
+    return app.inject({ method: "GET", url: "/days", query });
   }
 
   it("serves the newest Days first, with no query at all", async () => {
@@ -25,7 +25,7 @@ describe("GET /daily-statistics", () => {
 
     expect(response.statusCode).toBe(200);
 
-    const body = dailyStatisticsListSchema.parse(response.json());
+    const body = daysListSchema.parse(response.json());
 
     expect(body.pagination).toEqual({
       page: 1,
@@ -60,7 +60,7 @@ describe("GET /daily-statistics", () => {
 
     expect(response.statusCode).toBe(200);
 
-    const { dailyStatistics, pagination } = dailyStatisticsListSchema.parse(response.json());
+    const { dailyStatistics, pagination } = daysListSchema.parse(response.json());
     const prices = dailyStatistics.map(({ averagePriceCentsPerKwh }) => averagePriceCentsPerKwh);
 
     expect(pagination).toEqual({ page: 2, pageSize: 5, totalDays: 31, totalPages: 7 });
@@ -93,7 +93,7 @@ describe("GET /daily-statistics", () => {
 
     expect(response.statusCode).toBe(200);
 
-    const { dailyStatistics, pagination } = dailyStatisticsListSchema.parse(response.json());
+    const { dailyStatistics, pagination } = daysListSchema.parse(response.json());
 
     expect(pagination.totalDays).toBeGreaterThan(0);
     expect(pagination.totalDays).toBeLessThan(144);

@@ -14,8 +14,8 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { SearchParams } from "@/lib/daily-statistics-query";
 import { listHref } from "@/lib/day-detail-links";
+import type { SearchParams } from "@/lib/days-query";
 import { formatDay } from "@/lib/format";
 
 /** Names the Day Detail once, so the tab and the heading cannot drift apart. */

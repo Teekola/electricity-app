@@ -1,44 +1,34 @@
 import { type ReactNode, Suspense } from "react";
 
-import type {
-  DailyStatistics,
-  DailyStatisticsQuery,
-  IsoDate,
-  Pagination,
-} from "@repo/api-contract";
+import type { DailyStatistics, DaysQuery, IsoDate, Pagination } from "@repo/api-contract";
 
-import { DailyStatisticsFilters } from "@/components/daily-statistics-filters";
-import { DailyStatisticsNavigationProvider } from "@/components/daily-statistics-navigation";
-import { DailyStatisticsPageSize } from "@/components/daily-statistics-page-size";
-import { DailyStatisticsPagination } from "@/components/daily-statistics-pagination";
 import {
   DailyStatisticsTable,
   DailyStatisticsTableSkeleton,
 } from "@/components/daily-statistics-table";
-import { getDailyStatistics } from "@/lib/daily-statistics";
-import { describeExcludedDays } from "@/lib/daily-statistics-filters";
-import {
-  filteredMeasures,
-  hasFilters,
-  parseDailyStatisticsQuery,
-  type SearchParams,
-} from "@/lib/daily-statistics-query";
+import { DaysFilters } from "@/components/days-filters";
+import { DaysNavigationProvider } from "@/components/days-navigation";
+import { DaysPageSize } from "@/components/days-page-size";
+import { DaysPagination } from "@/components/days-pagination";
+import { getDaysWithStatistics } from "@/lib/days";
+import { describeExcludedDays } from "@/lib/days-filters";
+import { filteredMeasures, hasFilters, parseDaysQuery, type SearchParams } from "@/lib/days-query";
 
 export interface DailyStatisticsProps {
   readonly searchParams: Promise<SearchParams>;
 }
 
 export async function DailyStatistics({ searchParams }: DailyStatisticsProps) {
-  const query = parseDailyStatisticsQuery(await searchParams);
+  const query = parseDaysQuery(await searchParams);
 
   return (
-    <DailyStatisticsNavigationProvider query={query}>
+    <DaysNavigationProvider query={query}>
       <DailyStatisticsLayout>
         <Suspense fallback={<DailyStatisticsPlaceholder size={query.size} />}>
           <DailyStatisticsContent query={query} />
         </Suspense>
       </DailyStatisticsLayout>
-    </DailyStatisticsNavigationProvider>
+    </DaysNavigationProvider>
   );
 }
 
@@ -64,12 +54,12 @@ function DailyStatisticsPlaceholder({ size }: { readonly size?: number }) {
   );
 }
 
-async function DailyStatisticsContent({ query }: { readonly query: DailyStatisticsQuery }) {
-  const { dailyStatistics, pagination } = await getDailyStatistics(query);
+async function DailyStatisticsContent({ query }: { readonly query: DaysQuery }) {
+  const { dailyStatistics, pagination } = await getDaysWithStatistics(query);
 
   return (
     <>
-      <DailyStatisticsFilters knownDay={latestOnPage(dailyStatistics)} />
+      <DaysFilters knownDay={latestOnPage(dailyStatistics)} />
 
       <DailyStatisticsTable dailyStatistics={dailyStatistics} />
 
@@ -80,8 +70,8 @@ async function DailyStatisticsContent({ query }: { readonly query: DailyStatisti
           shown={dailyStatistics.length}
         />
         <div className="flex items-center gap-2">
-          <DailyStatisticsPageSize />
-          <DailyStatisticsPagination pagination={pagination} />
+          <DaysPageSize />
+          <DaysPagination pagination={pagination} />
         </div>
       </div>
     </>
@@ -100,7 +90,7 @@ function DailyStatisticsSummary({
   pagination,
   shown,
 }: {
-  readonly query: DailyStatisticsQuery;
+  readonly query: DaysQuery;
   readonly pagination: Pagination;
   readonly shown: number;
 }) {

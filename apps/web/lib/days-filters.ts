@@ -1,5 +1,5 @@
-import type { DailyStatisticsMeasure, DailyStatisticsQuery } from "@repo/api-contract";
-import { DAILY_STATISTICS_MEASURE_BOUNDS, isNullableMeasure } from "@repo/api-contract";
+import type { DailyStatisticsMeasure, DaysQuery } from "@repo/api-contract";
+import { DAYS_MEASURE_BOUNDS, isNullableMeasure } from "@repo/api-contract";
 
 import { formatDay, formatMwh, formatPrice } from "./format";
 
@@ -48,12 +48,9 @@ export function describeExcludedDays(measures: readonly DailyStatisticsMeasure[]
   return `Days that never measured ${named} are excluded.`;
 }
 
-export function describeMeasureFilter(
-  query: DailyStatisticsQuery,
-  measure: DailyStatisticsMeasure,
-): string {
+export function describeMeasureFilter(query: DaysQuery, measure: DailyStatisticsMeasure): string {
   const { name, unit, format } = MEASURES[measure];
-  const [minimum, maximum] = DAILY_STATISTICS_MEASURE_BOUNDS[measure];
+  const [minimum, maximum] = DAYS_MEASURE_BOUNDS[measure];
   const min = query[minimum];
   const max = query[maximum];
 
@@ -67,7 +64,7 @@ export function describeMeasureFilter(
   return name;
 }
 
-export function describeDateRange({ dateFrom, dateTo }: DailyStatisticsQuery): string {
+export function describeDateRange({ dateFrom, dateTo }: DaysQuery): string {
   if (dateFrom !== undefined && dateTo !== undefined) {
     return `${formatDay(dateFrom)} – ${formatDay(dateTo)}`;
   }

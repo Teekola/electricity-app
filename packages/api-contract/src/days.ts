@@ -1,10 +1,6 @@
 import * as z from "zod";
 
-export const isoDateSchema = z.iso.date();
-export type IsoDate = z.infer<typeof isoDateSchema>;
-
-/** The zone the dataset's own timestamps are in, and the one a Day is a calendar day of. */
-export const FINNISH_TIME_ZONE = "Europe/Helsinki";
+import { isoDateSchema } from "./day.js";
 
 export const dailyStatisticsSchema = z.object({
   date: isoDateSchema,
@@ -28,21 +24,21 @@ export type DailyStatisticsMeasure = z.infer<typeof dailyStatisticsMeasureSchema
  * The allowlist of sortable columns. A sort column reaches SQL as an identifier, where
  * `Prisma.sql` parameters cannot protect it.
  */
-export const DAILY_STATISTICS_SORT_COLUMNS = ["date", ...DAILY_STATISTICS_MEASURES] as const;
+export const DAYS_SORT_COLUMNS = ["date", ...DAILY_STATISTICS_MEASURES] as const;
 
-export const dailyStatisticsSortColumnSchema = z.enum(DAILY_STATISTICS_SORT_COLUMNS);
+export const daysSortColumnSchema = z.enum(DAYS_SORT_COLUMNS);
 
-export type DailyStatisticsSortColumn = z.infer<typeof dailyStatisticsSortColumnSchema>;
+export type DaysSortColumn = z.infer<typeof daysSortColumnSchema>;
 
 export const sortDirectionSchema = z.enum(["asc", "desc"]);
 
 export type SortDirection = z.infer<typeof sortDirectionSchema>;
 
-export const DAILY_STATISTICS_PAGE_SIZES = [25, 50, 100, 200] as const;
+export const DAYS_PAGE_SIZES = [25, 50, 100, 200] as const;
 
-export const DEFAULT_DAILY_STATISTICS_PAGE_SIZE = 50;
+export const DEFAULT_DAYS_PAGE_SIZE = 50;
 
-export const MAX_DAILY_STATISTICS_PAGE_SIZE = 200;
+export const MAX_DAYS_PAGE_SIZE = 200;
 
 /**
  * An untouched field submits as blank, and `Number("")` is 0, so a blank has to be read as
@@ -55,15 +51,10 @@ const optionalNumberSchema = z
   .transform((value) => (typeof value === "string" ? undefined : value))
   .optional();
 
-const dailyStatisticsQueryFieldsSchema = z.object({
+const daysQueryFieldsSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
-  size: z.coerce
-    .number()
-    .int()
-    .positive()
-    .max(MAX_DAILY_STATISTICS_PAGE_SIZE)
-    .default(DEFAULT_DAILY_STATISTICS_PAGE_SIZE),
-  sort: dailyStatisticsSortColumnSchema.default("date"),
+  size: z.coerce.number().int().positive().max(MAX_DAYS_PAGE_SIZE).default(DEFAULT_DAYS_PAGE_SIZE),
+  sort: daysSortColumnSchema.default("date"),
   dir: sortDirectionSchema.default("desc"),
   dateFrom: isoDateSchema.optional(),
   dateTo: isoDateSchema.optional(),
@@ -77,7 +68,7 @@ const dailyStatisticsQueryFieldsSchema = z.object({
   streakMax: optionalNumberSchema,
 });
 
-export const DAILY_STATISTICS_MEASURE_BOUNDS = {
+export const DAYS_MEASURE_BOUNDS = {
   prod: ["prodMin", "prodMax"],
   cons: ["consMin", "consMax"],
   price: ["priceMin", "priceMax"],
@@ -98,28 +89,28 @@ export function isNullableMeasure(measure: DailyStatisticsMeasure): boolean {
 }
 
 /** The bounds of every range a query can carry, so a caller can treat each pair as one choice. */
-export const DAILY_STATISTICS_RANGES = [
+export const DAYS_QUERY_RANGES = [
   ["dateFrom", "dateTo"],
-  ...Object.values(DAILY_STATISTICS_MEASURE_BOUNDS),
+  ...Object.values(DAYS_MEASURE_BOUNDS),
 ] as const satisfies readonly (readonly [string, string])[];
 
 function isAscending(min: number | undefined, max: number | undefined): boolean {
   return min === undefined || max === undefined || min <= max;
 }
 
-export const dailyStatisticsQuerySchema = Object.values(DAILY_STATISTICS_MEASURE_BOUNDS).reduce(
+export const daysQuerySchema = Object.values(DAYS_MEASURE_BOUNDS).reduce(
   (schema, [min, max]) =>
     schema.refine((query) => isAscending(query[min], query[max]), {
       error: `${min} must not be greater than ${max}`,
       path: [min],
     }),
-  dailyStatisticsQueryFieldsSchema.refine(
+  daysQueryFieldsSchema.refine(
     ({ dateFrom, dateTo }) => !dateFrom || !dateTo || dateFrom <= dateTo,
     { error: "dateFrom must not be later than dateTo", path: ["dateFrom"] },
   ),
 );
 
-export type DailyStatisticsQuery = z.infer<typeof dailyStatisticsQuerySchema>;
+export type DaysQuery = z.infer<typeof daysQuerySchema>;
 
 export const paginationSchema = z.object({
   page: z.number().int().positive(),
@@ -130,9 +121,9 @@ export const paginationSchema = z.object({
 
 export type Pagination = z.infer<typeof paginationSchema>;
 
-export const dailyStatisticsListSchema = z.object({
+export const daysListSchema = z.object({
   dailyStatistics: z.array(dailyStatisticsSchema),
   pagination: paginationSchema,
 });
 
-export type DailyStatisticsList = z.infer<typeof dailyStatisticsListSchema>;
+export type DaysList = z.infer<typeof daysListSchema>;

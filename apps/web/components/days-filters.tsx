@@ -4,10 +4,10 @@ import { CalendarDays, RotateCcw, SlidersHorizontal, X } from "lucide-react";
 import { type SyntheticEvent, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
-import type { DailyStatisticsMeasure, DailyStatisticsQuery, IsoDate } from "@repo/api-contract";
-import { DAILY_STATISTICS_MEASURE_BOUNDS, DAILY_STATISTICS_MEASURES } from "@repo/api-contract";
+import type { DailyStatisticsMeasure, DaysQuery, IsoDate } from "@repo/api-contract";
+import { DAILY_STATISTICS_MEASURES, DAYS_MEASURE_BOUNDS } from "@repo/api-contract";
 
-import { useDailyStatisticsNavigation } from "@/components/daily-statistics-navigation";
+import { useDaysNavigation } from "@/components/days-navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -23,13 +23,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { fromIsoDate, toIsoDate } from "@/lib/day";
 import {
   describeDateRange,
   describeMeasureFilter,
   measureMaxDecimals,
   measureName,
   measureUnit,
-} from "@/lib/daily-statistics-filters";
+} from "@/lib/days-filters";
 import {
   collectRanges,
   filteredMeasures,
@@ -41,17 +42,16 @@ import {
   withMeasureRanges,
   withoutFilters,
   withoutMeasure,
-} from "@/lib/daily-statistics-query";
-import { fromIsoDate, toIsoDate } from "@/lib/day";
+} from "@/lib/days-query";
 import { sanitizeDecimalInput } from "@/lib/decimal-input";
 
-export interface DailyStatisticsFiltersProps {
+export interface DaysFiltersProps {
   /** Any Day the dataset holds, which is where the calendar opens when no range is set. */
   readonly knownDay?: IsoDate;
 }
 
-export function DailyStatisticsFilters({ knownDay }: DailyStatisticsFiltersProps) {
-  const { query, goTo } = useDailyStatisticsNavigation();
+export function DaysFilters({ knownDay }: DaysFiltersProps) {
+  const { query, goTo } = useDaysNavigation();
   const measures = filteredMeasures(query);
 
   return (
@@ -81,8 +81,8 @@ export function DailyStatisticsFilters({ knownDay }: DailyStatisticsFiltersProps
   );
 }
 
-function DateRangeFilter({ knownDay }: DailyStatisticsFiltersProps) {
-  const { query, goTo } = useDailyStatisticsNavigation();
+function DateRangeFilter({ knownDay }: DaysFiltersProps) {
+  const { query, goTo } = useDaysNavigation();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<DateRange | undefined>(undefined);
   const anchor = useRememberedDay(knownDay);
@@ -157,7 +157,7 @@ function monthBefore(day: IsoDate | undefined): Date | undefined {
   return new Date(date.getFullYear(), date.getMonth() - 1, 1);
 }
 
-function toDateRange({ dateFrom, dateTo }: DailyStatisticsQuery): DateRange | undefined {
+function toDateRange({ dateFrom, dateTo }: DaysQuery): DateRange | undefined {
   if (dateFrom === undefined && dateTo === undefined) return undefined;
 
   return {
@@ -167,7 +167,7 @@ function toDateRange({ dateFrom, dateTo }: DailyStatisticsQuery): DateRange | un
 }
 
 function MeasureFilters() {
-  const { query, goTo } = useDailyStatisticsNavigation();
+  const { query, goTo } = useDaysNavigation();
   const [open, setOpen] = useState(false);
   const active = filteredMeasures(query).length;
   const ranges = measureRanges(query);
@@ -226,7 +226,7 @@ function MeasureRange({
   readonly measure: DailyStatisticsMeasure;
   readonly ranges: MeasureRanges;
 }) {
-  const [minimum, maximum] = DAILY_STATISTICS_MEASURE_BOUNDS[measure];
+  const [minimum, maximum] = DAYS_MEASURE_BOUNDS[measure];
 
   return (
     <fieldset className="flex flex-col gap-1.5">

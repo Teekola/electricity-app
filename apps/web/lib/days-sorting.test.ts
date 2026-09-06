@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { parseDailyStatisticsQuery } from "./daily-statistics-query";
-import { fromSortingState, toSortingState } from "./daily-statistics-sorting";
+import { parseDaysQuery } from "./days-query";
+import { fromSortingState, toSortingState } from "./days-sorting";
 
 /** A query that shares no field with the contract's defaults, so no assertion can pass by accident. */
-const CHOSEN = parseDailyStatisticsQuery({
+const CHOSEN = parseDaysQuery({
   page: "3",
   size: "10",
   sort: "price",
@@ -13,7 +13,7 @@ const CHOSEN = parseDailyStatisticsQuery({
   dateTo: "2024-01-31",
 });
 
-const FILTERED = parseDailyStatisticsQuery({
+const FILTERED = parseDaysQuery({
   dateFrom: "2024-01-01",
   dateTo: "2024-01-31",
   prodMin: "8000",

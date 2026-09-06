@@ -2,9 +2,9 @@
 
 import { useId } from "react";
 
-import { DAILY_STATISTICS_PAGE_SIZES } from "@repo/api-contract";
+import { DAYS_PAGE_SIZES } from "@repo/api-contract";
 
-import { useDailyStatisticsNavigation } from "@/components/daily-statistics-navigation";
+import { useDaysNavigation } from "@/components/days-navigation";
 import {
   Select,
   SelectContent,
@@ -12,10 +12,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { withPageSize } from "@/lib/daily-statistics-query";
+import { withPageSize } from "@/lib/days-query";
 
-export function DailyStatisticsPageSize() {
-  const { query, goTo } = useDailyStatisticsNavigation();
+export function DaysPageSize() {
+  const { query, goTo } = useDaysNavigation();
   const labelId = useId();
 
   return (
@@ -34,7 +34,7 @@ export function DailyStatisticsPageSize() {
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {DAILY_STATISTICS_PAGE_SIZES.map((size) => (
+          {DAYS_PAGE_SIZES.map((size) => (
             <SelectItem key={size} value={size}>
               {size}
             </SelectItem>

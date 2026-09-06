@@ -1,16 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type {
-  DailyStatistics,
-  DailyStatisticsList,
-  DailyStatisticsQuery,
-  IsoDate,
-} from "@repo/api-contract";
+import type { DailyStatistics, DaysList, DaysQuery, IsoDate } from "@repo/api-contract";
 
 import { buildApp } from "../../app.js";
 
-import { findDailyStatistics } from "./find-daily-statistics.js";
+import { findDaysWithStatistics } from "./find-days-with-statistics.js";
 
 function descending(a: number | string, b: number | string): number {
   if (a === b) return 0;
@@ -25,7 +20,7 @@ function expectOrderedDescending(values: readonly (number | string)[]): void {
 }
 
 /** The Days named below are fixture Days, each chosen to exercise one domain case. */
-describe("findDailyStatistics", () => {
+describe("findDaysWithStatistics", () => {
   let app: FastifyInstance;
 
   beforeAll(async () => {
@@ -36,8 +31,8 @@ describe("findDailyStatistics", () => {
     await app.close();
   });
 
-  function find(query: Partial<DailyStatisticsQuery> = {}): Promise<DailyStatisticsList> {
-    return findDailyStatistics(app.prisma, {
+  function find(query: Partial<DaysQuery> = {}): Promise<DaysList> {
+    return findDaysWithStatistics(app.prisma, {
       page: 1,
       size: 50,
       sort: "date",

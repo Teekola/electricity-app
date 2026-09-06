@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { parseDailyStatisticsQuery } from "./daily-statistics-query";
 import { dayHref, listHref } from "./day-detail-links";
+import { parseDaysQuery } from "./days-query";
 
-const DEFAULTS = parseDailyStatisticsQuery({});
+const DEFAULTS = parseDaysQuery({});
 
 const CHOSEN = {
   page: "3",
@@ -21,7 +21,7 @@ describe("dayHref", () => {
   });
 
   it("carries the list's choices, so the Day can be returned from without history", () => {
-    const href = dayHref("2024-01-15", parseDailyStatisticsQuery(CHOSEN));
+    const href = dayHref("2024-01-15", parseDaysQuery(CHOSEN));
 
     expect(href).toBe(
       "/days/2024-01-15?page=3&size=25&sort=price&dir=asc&dateFrom=2024-01-01&dateTo=2024-01-31&priceMax=0",
@@ -41,7 +41,7 @@ describe("listHref", () => {
   });
 
   it("round-trips a Day reached from a filtered list", () => {
-    const query = parseDailyStatisticsQuery(CHOSEN);
+    const query = parseDaysQuery(CHOSEN);
     const search = dayHref("2024-01-15", query).split("?")[1];
 
     expect(listHref(Object.fromEntries(new URLSearchParams(search)))).toBe(`/?${search}`);
