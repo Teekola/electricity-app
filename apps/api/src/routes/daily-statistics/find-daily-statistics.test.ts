@@ -39,9 +39,9 @@ describe("findDailyStatistics", () => {
   function find(query: Partial<DailyStatisticsQuery> = {}): Promise<DailyStatisticsList> {
     return findDailyStatistics(app.prisma, {
       page: 1,
-      pageSize: 50,
-      sortBy: "date",
-      sortDirection: "desc",
+      size: 50,
+      sort: "date",
+      dir: "desc",
       ...query,
     });
   }
@@ -57,7 +57,7 @@ describe("findDailyStatistics", () => {
   }
 
   async function twoNewestDates(): Promise<readonly [IsoDate, IsoDate]> {
-    const { dailyStatistics } = await find({ pageSize: 2 });
+    const { dailyStatistics } = await find({ size: 2 });
     const [newest, previous] = dailyStatistics;
 
     if (!newest || !previous) throw new Error("The dataset holds fewer than two Days");
@@ -170,8 +170,8 @@ describe("findDailyStatistics", () => {
   describe("pagination", () => {
     it("does not repeat or skip Days between consecutive pages", async () => {
       const [first, second] = await Promise.all([
-        find({ page: 1, pageSize: 3 }),
-        find({ page: 2, pageSize: 3 }),
+        find({ page: 1, size: 3 }),
+        find({ page: 2, size: 3 }),
       ]);
       const dates = [...first.dailyStatistics, ...second.dailyStatistics].map(({ date }) => date);
 
@@ -181,7 +181,7 @@ describe("findDailyStatistics", () => {
     });
 
     it("reports the page, its size and the number of pages the filter fills", async () => {
-      const { pagination } = await find({ page: 2, pageSize: 7 });
+      const { pagination } = await find({ page: 2, size: 7 });
 
       expect(pagination.page).toBe(2);
       expect(pagination.pageSize).toBe(7);
@@ -190,11 +190,11 @@ describe("findDailyStatistics", () => {
     });
 
     it("answers a page past the end with the last page, so a stale URL is never blank", async () => {
-      const pageSize = 400;
-      const { pagination } = await find({ pageSize });
+      const size = 400;
+      const { pagination } = await find({ size });
       const [beyond, last] = await Promise.all([
-        find({ page: pagination.totalPages + 5, pageSize }),
-        find({ page: pagination.totalPages, pageSize }),
+        find({ page: pagination.totalPages + 5, size }),
+        find({ page: pagination.totalPages, size }),
       ]);
 
       expect(beyond.pagination.page).toBe(pagination.totalPages);
@@ -214,16 +214,16 @@ describe("findDailyStatistics", () => {
 
   describe("ordering", () => {
     it("orders newest Day first when the query asks for nothing else", async () => {
-      const { dailyStatistics } = await find({ pageSize: 10 });
+      const { dailyStatistics } = await find({ size: 10 });
 
       expectOrderedDescending(dailyStatistics.map(({ date }) => date));
     });
 
     it("ranks the whole dataset by a measure, not just the page it returns", async () => {
       const query = {
-        sortBy: "longestNegativePriceStreakHours",
-        sortDirection: "desc",
-        pageSize: 5,
+        sort: "streak",
+        dir: "desc",
+        size: 5,
       } as const;
       const [first, second] = await Promise.all([
         find({ ...query, page: 1 }),
@@ -239,8 +239,8 @@ describe("findDailyStatistics", () => {
 
     it.each(["asc", "desc"] as const)(
       "puts Days without a measurement last, sorting %s",
-      async (sortDirection) => {
-        const { dailyStatistics } = await find({ sortBy: "totalConsumptionMwh", sortDirection });
+      async (dir) => {
+        const { dailyStatistics } = await find({ sort: "cons", dir });
         const measured = dailyStatistics.map(
           ({ totalConsumptionMwh }) => totalConsumptionMwh !== null,
         );
@@ -280,6 +280,102 @@ describe("findDailyStatistics", () => {
 
       expect(dailyStatistics).toEqual([]);
       expect(pagination).toMatchObject({ totalDays: 0, totalPages: 0 });
+    });
+  });
+
+  describe("measure filtering", () => {
+    it("reports a total that matches the Days it goes on to serve", async () => {
+      const filter = { streakMin: 3 } as const;
+      const [firstPage, everyDay] = await Promise.all([
+        find({ ...filter, size: 1 }),
+        find({ ...filter, size: 400 }),
+      ]);
+
+      expect(everyDay.dailyStatistics).toHaveLength(firstPage.pagination.totalDays);
+      expect(everyDay.pagination.totalDays).toBe(firstPage.pagination.totalDays);
+    });
+
+    it("finds the 144 Days that priced any hour below zero", async () => {
+      const { pagination } = await find({ streakMin: 1, size: 200 });
+
+      expect(pagination.totalDays).toBe(144);
+    });
+
+    it("excludes the Days without a measurement, rather than reading them as zero", async () => {
+      const { dailyStatistics, pagination } = await find({ consMin: 0, size: 400 });
+
+      expect(pagination.totalDays).toBe(426);
+      expect(dailyStatistics.every(({ totalConsumptionMwh }) => totalConsumptionMwh !== null)).toBe(
+        true,
+      );
+      expect(dailyStatistics.map(({ date }) => date)).not.toContain("2023-07-31");
+    });
+
+    it("returns only Days inside every bound it was given", async () => {
+      const bounds = { prodMin: 100_000, prodMax: 200_000, priceMax: 5 } as const;
+      const { dailyStatistics } = await find({ ...bounds, size: 200 });
+
+      expect(dailyStatistics.length).toBeGreaterThan(0);
+
+      for (const day of dailyStatistics) {
+        expect(day.totalProductionMwh).toBeGreaterThanOrEqual(bounds.prodMin);
+        expect(day.totalProductionMwh).toBeLessThanOrEqual(bounds.prodMax);
+        expect(day.averagePriceCentsPerKwh).toBeLessThanOrEqual(bounds.priceMax);
+      }
+    });
+
+    it("treats a bound as inclusive", async () => {
+      const day = await findDay("2024-05-13");
+      const price = day.averagePriceCentsPerKwh;
+
+      if (price === null) throw new Error("2024-05-13 has no average price");
+
+      const { dailyStatistics } = await find({ priceMin: price, priceMax: price, size: 200 });
+
+      expect(dailyStatistics.map(({ date }) => date)).toContain("2024-05-13");
+    });
+
+    it("narrows a date range further, rather than replacing it", async () => {
+      const range = { dateFrom: "2024-08-01", dateTo: "2024-08-31" } as const;
+      const [everyDay, negative] = await Promise.all([
+        find({ ...range, size: 200 }),
+        find({ ...range, streakMin: 1, size: 200 }),
+      ]);
+
+      expect(everyDay.pagination.totalDays).toBe(31);
+      expect(negative.pagination.totalDays).toBeGreaterThan(0);
+      expect(negative.pagination.totalDays).toBeLessThan(everyDay.pagination.totalDays);
+      expect(negative.dailyStatistics.every(({ date }) => date.startsWith("2024-08"))).toBe(true);
+    });
+
+    it("reports no Days at all for a bound nothing reaches", async () => {
+      const { dailyStatistics, pagination } = await find({ page: 4, streakMin: 100 });
+
+      expect(dailyStatistics).toEqual([]);
+      expect(pagination).toMatchObject({ page: 1, totalDays: 0, totalPages: 0 });
+    });
+
+    it("clamps a page past the end of a filtered list, not of the dataset", async () => {
+      const filter = { streakMin: 1, size: 50 } as const;
+      const { pagination } = await find(filter);
+      const beyond = await find({ ...filter, page: pagination.totalPages + 5 });
+
+      expect(beyond.pagination.page).toBe(pagination.totalPages);
+      expect(beyond.dailyStatistics.length).toBeGreaterThan(0);
+    });
+
+    it("ranks a filtered list by a measure across its pages", async () => {
+      const filter = { streakMin: 1, sort: "price", dir: "desc", size: 5 } as const;
+      const [first, second] = await Promise.all([
+        find({ ...filter, page: 1 }),
+        find({ ...filter, page: 2 }),
+      ]);
+
+      expectOrderedDescending(
+        [...first.dailyStatistics, ...second.dailyStatistics].map(
+          ({ averagePriceCentsPerKwh }) => averagePriceCentsPerKwh ?? 0,
+        ),
+      );
     });
   });
 });

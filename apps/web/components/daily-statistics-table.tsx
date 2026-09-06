@@ -8,7 +8,7 @@ import {
   type Updater,
   useTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronsUpDown, TriangleAlert } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronsUpDown, RotateCcw, TriangleAlert } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { DailyStatistics } from "@repo/api-contract";
@@ -26,7 +26,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { fromSortingState, toSortingState } from "@/lib/daily-statistics-query";
+import { hasFilters, withoutFilters } from "@/lib/daily-statistics-query";
+import { fromSortingState, toSortingState } from "@/lib/daily-statistics-sorting";
 import { formatDay, formatMwh, formatPrice, formatStreak } from "@/lib/format";
 import { describeIncompleteness } from "@/lib/incomplete-day";
 import { cn } from "@/lib/utils";
@@ -48,25 +49,25 @@ const columns = helper.columns([
     meta: { width: "w-36" },
   }),
   helper.accessor("totalProductionMwh", {
-    id: "totalProductionMwh",
+    id: "prod",
     header: "Production (MWh)",
     cell: ({ row }) => formatMwh(row.original.totalProductionMwh),
     meta: { numeric: true, width: "w-40" },
   }),
   helper.accessor("totalConsumptionMwh", {
-    id: "totalConsumptionMwh",
+    id: "cons",
     header: "Consumption (MWh)",
     cell: ({ row }) => formatMwh(row.original.totalConsumptionMwh),
     meta: { numeric: true, width: "w-44" },
   }),
   helper.accessor("averagePriceCentsPerKwh", {
-    id: "averagePriceCentsPerKwh",
+    id: "price",
     header: "Avg price (c/kWh)",
     cell: ({ row }) => formatPrice(row.original.averagePriceCentsPerKwh),
     meta: { numeric: true, width: "w-40" },
   }),
   helper.accessor("longestNegativePriceStreakHours", {
-    id: "longestNegativePriceStreakHours",
+    id: "streak",
     header: "Longest negative streak",
     cell: ({ row }) => formatStreak(row.original.longestNegativePriceStreakHours),
     meta: { numeric: true, width: "w-52" },
@@ -118,7 +119,7 @@ export function DailyStatisticsTable({ dailyStatistics }: DailyStatisticsTablePr
       ))}
     >
       {isNavigating ? (
-        <PlaceholderRows count={query.pageSize} />
+        <PlaceholderRows count={query.size} />
       ) : (
         table.getRowModel().rows.map((row) => (
           <TableRow key={row.id}>
@@ -139,7 +140,17 @@ export function DailyStatisticsTable({ dailyStatistics }: DailyStatisticsTablePr
             colSpan={columns.length}
             className="text-center align-middle text-muted-foreground"
           >
-            No days match this filter.
+            {hasFilters(query) ? (
+              <span className="inline-flex flex-col items-center gap-2">
+                No days match these filters.
+                <Button variant="outline" size="sm" onClick={() => goTo(withoutFilters(query))}>
+                  <RotateCcw aria-hidden />
+                  Reset
+                </Button>
+              </span>
+            ) : (
+              "No days to show."
+            )}
           </TableCell>
         </TableRow>
       )}
@@ -147,7 +158,13 @@ export function DailyStatisticsTable({ dailyStatistics }: DailyStatisticsTablePr
   );
 }
 
-export function DailyStatisticsTableSkeleton() {
+export interface DailyStatisticsTableSkeletonProps {
+  readonly size?: number;
+}
+
+export function DailyStatisticsTableSkeleton({
+  size = DEFAULT_DAILY_STATISTICS_PAGE_SIZE,
+}: DailyStatisticsTableSkeletonProps) {
   return (
     <DailyStatisticsTableFrame
       busy
@@ -164,7 +181,7 @@ export function DailyStatisticsTableSkeleton() {
         </TableRow>
       }
     >
-      <PlaceholderRows count={DEFAULT_DAILY_STATISTICS_PAGE_SIZE} />
+      <PlaceholderRows count={size} />
     </DailyStatisticsTableFrame>
   );
 }

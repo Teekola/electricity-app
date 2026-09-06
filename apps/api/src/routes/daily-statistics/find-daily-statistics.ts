@@ -1,31 +1,35 @@
 import * as z from "zod";
 
 import type {
+  DailyStatistics,
   DailyStatisticsList,
   DailyStatisticsQuery,
   DailyStatisticsSortColumn,
   SortDirection,
 } from "@repo/api-contract";
-import { dailyStatisticsSchema } from "@repo/api-contract";
+import {
+  DAILY_STATISTICS_MEASURE_BOUNDS,
+  DAILY_STATISTICS_MEASURES,
+  dailyStatisticsSchema,
+  FINNISH_TIME_ZONE,
+} from "@repo/api-contract";
 
 import type { PrismaClient } from "../../generated/prisma/client.js";
 import { Prisma } from "../../generated/prisma/client.js";
 
-/** A sort column is an identifier, where a bound parameter cannot go, so it is never interpolated. */
-const SORT_COLUMNS: Record<DailyStatisticsSortColumn, Prisma.Sql> = {
+/** A column is an identifier, where a bound parameter cannot go, so it is never interpolated. */
+const COLUMNS: Record<DailyStatisticsSortColumn, Prisma.Sql> = {
   date: Prisma.sql`"date"`,
-  totalProductionMwh: Prisma.sql`"totalProductionMwh"`,
-  totalConsumptionMwh: Prisma.sql`"totalConsumptionMwh"`,
-  averagePriceCentsPerKwh: Prisma.sql`"averagePriceCentsPerKwh"`,
-  longestNegativePriceStreakHours: Prisma.sql`"longestNegativePriceStreakHours"`,
+  prod: Prisma.sql`"totalProductionMwh"`,
+  cons: Prisma.sql`"totalConsumptionMwh"`,
+  price: Prisma.sql`"averagePriceCentsPerKwh"`,
+  streak: Prisma.sql`"longestNegativePriceStreakHours"`,
 };
 
 const SORT_DIRECTIONS: Record<SortDirection, Prisma.Sql> = {
   asc: Prisma.sql`ASC`,
   desc: Prisma.sql`DESC`,
 };
-
-const FINNISH_TIME_ZONE = "Europe/Helsinki";
 
 function dateRange({ dateFrom, dateTo }: DailyStatisticsQuery): Prisma.Sql {
   return Prisma.join(
@@ -37,14 +41,34 @@ function dateRange({ dateFrom, dateTo }: DailyStatisticsQuery): Prisma.Sql {
   );
 }
 
+/** Measures exist only once the Data Points are aggregated, so their bounds cannot join above. */
+function measureRangeFilter(query: DailyStatisticsQuery): Prisma.Sql {
+  const bounds = DAILY_STATISTICS_MEASURES.flatMap((measure) => {
+    const [minimum, maximum] = DAILY_STATISTICS_MEASURE_BOUNDS[measure];
+    const column = COLUMNS[measure];
+    const min = query[minimum];
+    const max = query[maximum];
+
+    return [
+      ...(min === undefined ? [] : [Prisma.sql`${column} >= ${min}`]),
+      ...(max === undefined ? [] : [Prisma.sql`${column} <= ${max}`]),
+    ];
+  });
+
+  if (bounds.length === 0) return Prisma.empty;
+
+  return Prisma.sql`WHERE ${Prisma.join(bounds, " AND ")}`;
+}
+
 /**
- * Aggregates the Data Points of each Day into one row shaped like `dailyStatisticsSchema`.
+ * Aggregates the Data Points of each Day into one row shaped like `dailyStatisticsSchema`,
+ * leaving the Days the query asks for in `matching`.
  *
  * The casts are the conversion at the boundary: `NUMERIC` arrives as a `Decimal` and
  * `COUNT` as a `BigInt`, neither of which `JSON.stringify` accepts, and a `DATE` would be
  * parsed into a `Date` in the process's own zone.
  */
-function dailyStatistics(query: DailyStatisticsQuery): Prisma.Sql {
+function matchingDays(query: DailyStatisticsQuery): Prisma.Sql {
   return Prisma.sql`
     WITH data_points AS (
       SELECT
@@ -93,7 +117,7 @@ function dailyStatistics(query: DailyStatisticsQuery): Prisma.Sql {
         AVG(hourlyprice)::double precision AS "averagePriceCentsPerKwh",
         COALESCE(MAX(streak.hours), 0)::int AS "longestNegativePriceStreakHours",
         COUNT(*)::int AS "hoursWithData",
-        -- The ::timestamp cast is load-bearing: AT TIME ZONE on a bare date takes the
+        -- The ::timestamp cast is load-bearing: on a bare date, AT TIME ZONE takes the
         -- timestamptz overload, which reads local midnight as UTC and inverts the clock
         -- change, reporting 25 hours for a spring-forward Day and 23 for a fall-back one.
         (EXTRACT(
@@ -104,53 +128,75 @@ function dailyStatistics(query: DailyStatisticsQuery): Prisma.Sql {
       FROM data_points
       LEFT JOIN longest_negative_price_streak AS streak ON streak.date = data_points.date
       GROUP BY data_points.date
+    ),
+    matching AS (
+      SELECT * FROM daily ${measureRangeFilter(query)}
     )
-    SELECT * FROM daily
-    -- The unique date breaks ties, so no Day can land on two pages.
-    ORDER BY ${SORT_COLUMNS[query.sortBy]} ${SORT_DIRECTIONS[query.sortDirection]} NULLS LAST, "date" DESC
-    LIMIT ${query.pageSize} OFFSET ${(query.page - 1) * query.pageSize}
   `;
 }
 
-function totalDays(query: DailyStatisticsQuery): Prisma.Sql {
+/** The window count is computed before the LIMIT, so it counts every matching Day. */
+function dailyStatisticsPage(query: DailyStatisticsQuery): Prisma.Sql {
   return Prisma.sql`
-    SELECT COUNT(DISTINCT date)::int AS "totalDays"
-    FROM electricitydata
-    WHERE date IS NOT NULL ${dateRange(query)}
+    ${matchingDays(query)}
+    SELECT *, COUNT(*) OVER ()::int AS "totalDays"
+    FROM matching
+    -- The GROUP BY leaves date unique, so it breaks every tie and no Day lands on two pages.
+    ORDER BY ${COLUMNS[query.sort]} ${SORT_DIRECTIONS[query.dir]} NULLS LAST, "date" DESC
+    LIMIT ${query.size} OFFSET ${(query.page - 1) * query.size}
   `;
+}
+
+function matchingDayCount(query: DailyStatisticsQuery): Prisma.Sql {
+  return Prisma.sql`${matchingDays(query)} SELECT COUNT(*)::int AS "totalDays" FROM matching`;
 }
 
 const dailyStatisticsRowsSchema = z.array(dailyStatisticsSchema);
 
-const totalDaysRowsSchema = z.tuple([z.object({ totalDays: z.number().int().nonnegative() })]);
+const totalDaysSchema = z.object({ totalDays: z.number().int().nonnegative() });
+
+const pageTotalsSchema = z.array(totalDaysSchema);
+
+const countRowsSchema = z.tuple([totalDaysSchema]);
 
 /** Reads one page of Daily Statistics, aggregated per Day from the Data Points. */
 export async function findDailyStatistics(
   prisma: PrismaClient,
   query: DailyStatisticsQuery,
 ): Promise<DailyStatisticsList> {
-  const [rows, totals] = await Promise.all([
-    // `$queryRaw` casts its result rather than checking it, hence the parse below.
-    prisma.$queryRaw(dailyStatistics(query)),
-    prisma.$queryRaw(totalDays(query)),
-  ]);
+  // `$queryRaw` casts its result rather than checking it, hence the parses below.
+  const rows = await prisma.$queryRaw(dailyStatisticsPage(query));
+  const [totals] = pageTotalsSchema.parse(rows);
 
-  const [{ totalDays: days }] = totalDaysRowsSchema.parse(totals);
-  const totalPages = Math.ceil(days / query.pageSize);
+  if (totals !== undefined) {
+    return page(query, query.page, dailyStatisticsRowsSchema.parse(rows), totals.totalDays);
+  }
 
-  // A page past the end is a stale link, not an error, so it answers with the last page. The
-  // count is only known now, so the common case still costs the two parallel queries above.
-  const page = Math.min(query.page, Math.max(totalPages, 1));
+  // An empty page carries no window count, so a page past the end has to ask for the count
+  // on its own. A stale link is not an error: it answers with the last page instead.
+  const [{ totalDays }] = countRowsSchema.parse(await prisma.$queryRaw(matchingDayCount(query)));
+  const served = Math.min(query.page, Math.max(Math.ceil(totalDays / query.size), 1));
 
+  if (served === query.page) return page(query, served, [], totalDays);
+
+  const lastPage = await prisma.$queryRaw(dailyStatisticsPage({ ...query, page: served }));
+
+  return page(query, served, dailyStatisticsRowsSchema.parse(lastPage), totalDays);
+}
+
+function page(
+  query: DailyStatisticsQuery,
+  page: number,
+  dailyStatistics: DailyStatistics[],
+  totalDays: number,
+): DailyStatisticsList {
   return {
-    dailyStatistics: dailyStatisticsRowsSchema.parse(
-      page === query.page ? rows : await prisma.$queryRaw(dailyStatistics({ ...query, page })),
-    ),
+    dailyStatistics,
     pagination: {
       page,
-      pageSize: query.pageSize,
-      totalDays: days,
-      totalPages,
+      pageSize: query.size,
+      totalDays,
+      totalPages: Math.ceil(totalDays / query.size),
     },
   };
 }

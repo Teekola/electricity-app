@@ -23,8 +23,10 @@ export interface DailyStatisticsPaginationProps {
 
 export function DailyStatisticsPagination({ pagination }: DailyStatisticsPaginationProps) {
   const { totalPages } = pagination;
-  const { query, goTo } = useDailyStatisticsNavigation();
-  const page = query.page;
+  const { isNavigating, query, goTo } = useDailyStatisticsNavigation();
+  // A URL can ask for a page past the end, which the API clamps: mid-navigation the reader's
+  // own choice is what to show, and once the rows land it is the page they actually came from.
+  const page = isNavigating ? query.page : pagination.page;
 
   if (totalPages <= 1) return null;
 

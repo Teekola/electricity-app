@@ -41,9 +41,14 @@ export function DailyStatisticsNavigationProvider({
       isNavigating,
       query: optimisticQuery,
       goTo: (next) => {
+        const search = toSearchParams(next).toString();
+
+        // Asking for the list already shown, such as the page the reader is on.
+        if (search === toSearchParams(optimisticQuery).toString()) return;
+
         startNavigating(() => {
           setOptimisticQuery(next);
-          router.push(`${pathname}?${toSearchParams(next).toString()}`);
+          router.push(`${pathname}?${search}`);
         });
       },
     }),

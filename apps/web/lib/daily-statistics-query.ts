@@ -1,10 +1,11 @@
-import type { SortingState } from "@tanstack/react-table";
 import * as z from "zod";
 
-import type { DailyStatisticsQuery } from "@repo/api-contract";
+import type { DailyStatisticsMeasure, DailyStatisticsQuery, IsoDate } from "@repo/api-contract";
 import {
+  DAILY_STATISTICS_MEASURE_BOUNDS,
+  DAILY_STATISTICS_MEASURES,
+  DAILY_STATISTICS_RANGES,
   dailyStatisticsQuerySchema,
-  dailyStatisticsSortColumnSchema,
   MAX_DAILY_STATISTICS_PAGE_SIZE,
 } from "@repo/api-contract";
 
@@ -18,69 +19,148 @@ const clampedPageSizeSchema = z.coerce
   .int()
   .transform((size) => Math.min(Math.max(size, 1), MAX_DAILY_STATISTICS_PAGE_SIZE));
 
+const DEFAULTS = new Map<string, unknown>(
+  Object.entries(dailyStatisticsQuerySchema.parse({})).filter(([, value]) => value !== undefined),
+);
+
+export type MeasureBound = (typeof DAILY_STATISTICS_MEASURE_BOUNDS)[DailyStatisticsMeasure][number];
+
+export type MeasureRanges = Record<MeasureBound, number | undefined>;
+
 /** The search params Next hands a page: a repeated parameter arrives as an array. */
 export type SearchParams = Record<string, string | string[] | undefined>;
 
-/** The query a URL asks for. Each field falls back on its own, so one bad parameter cannot
- * discard the reader's other choices. */
+/**
+ * Each field falls back on its own, so one bad parameter cannot discard the reader's other
+ * choices.
+ */
 export function parseDailyStatisticsQuery(searchParams: SearchParams): DailyStatisticsQuery {
   const fields = Object.fromEntries(
     Object.entries(dailyStatisticsQuerySchema.shape).flatMap(([field, schema]) => {
-      const result = (field === "pageSize" ? clampedPageSizeSchema : schema).safeParse(
+      const result = (field === "size" ? clampedPageSizeSchema : schema).safeParse(
         searchParams[field],
       );
 
-      return result.success ? [[field, result.data]] : [];
+      return result.success && result.data !== undefined ? [[field, result.data]] : [];
     }),
   );
 
-  const result = dailyStatisticsQuerySchema.safeParse(fields);
+  const result = dailyStatisticsQuerySchema.safeParse(
+    withoutEmptyBounds(withOrderedRanges(fields)),
+  );
 
-  if (result.success) return result.data;
-
-  // The Day range is the contract's only cross-field rule, and it means nothing half-dropped.
-  return dailyStatisticsQuerySchema.parse({ ...fields, dateFrom: undefined, dateTo: undefined });
+  return result.success ? result.data : dailyStatisticsQuerySchema.parse({});
 }
 
-/** The inverse of `parseDailyStatisticsQuery`: the search params that ask for this query. */
+// A streak of at least zero hours excludes no Day, so a URL carrying one asks for no filter.
+function withoutEmptyBounds(fields: Record<string, unknown>): Record<string, unknown> {
+  if (fields["streakMin"] !== 0) return fields;
+
+  const { streakMin: _, ...rest } = fields;
+
+  return rest;
+}
+
+// A range that runs backwards means nothing half-dropped, so both its bounds go, and only those.
+function withOrderedRanges(fields: Record<string, unknown>): Record<string, unknown> {
+  const ordered = { ...fields };
+
+  for (const [minimum, maximum] of DAILY_STATISTICS_RANGES) {
+    if (isOrdered(ordered[minimum], ordered[maximum])) continue;
+
+    delete ordered[minimum];
+    delete ordered[maximum];
+  }
+
+  return ordered;
+}
+
+function isOrdered(min: unknown, max: unknown): boolean {
+  if (typeof min === "number" && typeof max === "number") return min <= max;
+  if (typeof min === "string" && typeof max === "string") return min <= max;
+
+  return true;
+}
+
 export function toSearchParams(query: DailyStatisticsQuery): URLSearchParams {
   const params = new URLSearchParams();
 
   for (const [field, value] of Object.entries(query)) {
-    if (value !== undefined) params.set(field, String(value));
+    // What the contract would default to anyway is left out, so a URL carries only real choices.
+    if (value === undefined || DEFAULTS.get(field) === value) continue;
+
+    params.set(field, String(value));
   }
 
   return params;
 }
 
-/** The same list at a new page size. A position means nothing at another size, so the page resets. */
-export function withPageSize(query: DailyStatisticsQuery, pageSize: number): DailyStatisticsQuery {
-  return { ...query, page: 1, pageSize };
+export function withPageSize(query: DailyStatisticsQuery, size: number): DailyStatisticsQuery {
+  return { ...query, page: 1, size };
 }
 
-/** The same ordering, in the shape the table's headers read. */
-export function toSortingState({ sortBy, sortDirection }: DailyStatisticsQuery): SortingState {
-  return [{ id: sortBy, desc: sortDirection === "desc" }];
-}
-
-/** The inverse of `toSortingState`. The ranking changes under the reader, so the page resets. */
-export function fromSortingState(
-  sorting: SortingState,
+export function withDateRange(
   query: DailyStatisticsQuery,
+  dateFrom: IsoDate | undefined,
+  dateTo: IsoDate | undefined,
 ): DailyStatisticsQuery {
-  const [column] = sorting;
+  return { ...query, page: 1, dateFrom, dateTo };
+}
 
-  if (!column) return query;
-
-  const sortBy = dailyStatisticsSortColumnSchema.safeParse(column.id);
-
-  // A column id outside the allowlist is a bug in the table, not a request for a 400.
-  if (!sortBy.success) return query;
-
+export function withMeasureRanges(
+  query: DailyStatisticsQuery,
+  ranges: MeasureRanges,
+): DailyStatisticsQuery {
+  // The parser drops a zero streak bound too; doing it here keeps the optimistic query honest
+  // before the URL it produces is ever read back.
   return {
     ...query,
+    ...ranges,
+    streakMin: ranges.streakMin === 0 ? undefined : ranges.streakMin,
     page: 1,
-    sortBy: sortBy.data,
-    sortDirection: column.desc ? "desc" : "asc",
   };
+}
+
+export function withoutMeasure(
+  query: DailyStatisticsQuery,
+  measure: DailyStatisticsMeasure,
+): DailyStatisticsQuery {
+  const [minimum, maximum] = DAILY_STATISTICS_MEASURE_BOUNDS[measure];
+
+  return { ...query, page: 1, [minimum]: undefined, [maximum]: undefined };
+}
+
+export function withoutFilters(query: DailyStatisticsQuery): DailyStatisticsQuery {
+  return withDateRange(
+    withMeasureRanges(
+      query,
+      collectRanges(() => undefined),
+    ),
+    undefined,
+    undefined,
+  );
+}
+
+export function collectRanges(read: (bound: MeasureBound) => number | undefined): MeasureRanges {
+  return Object.fromEntries(
+    DAILY_STATISTICS_MEASURES.flatMap((measure) =>
+      DAILY_STATISTICS_MEASURE_BOUNDS[measure].map((bound) => [bound, read(bound)]),
+    ),
+  ) as MeasureRanges; // `Object.fromEntries` widens the keys it was given back to `string`.
+}
+
+export function measureRanges(query: DailyStatisticsQuery): MeasureRanges {
+  return collectRanges((bound) => query[bound]);
+}
+
+export function filteredMeasures(query: DailyStatisticsQuery): DailyStatisticsMeasure[] {
+  return DAILY_STATISTICS_MEASURES.filter((measure) =>
+    DAILY_STATISTICS_MEASURE_BOUNDS[measure].some((bound) => query[bound] !== undefined),
+  );
+}
+
+export function hasFilters(query: DailyStatisticsQuery): boolean {
+  return (
+    query.dateFrom !== undefined || query.dateTo !== undefined || filteredMeasures(query).length > 0
+  );
 }

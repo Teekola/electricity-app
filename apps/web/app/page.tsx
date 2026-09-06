@@ -9,7 +9,6 @@ export const metadata: Metadata = {
     "Finnish hourly electricity production, consumption and price data, summarised per day.",
 };
 
-/** `h-dvh` with a `min-h` floor: below that height the page scrolls instead of squashing. */
 export default function Page({ searchParams }: PageProps<"/">) {
   return (
     <main className="mx-auto flex h-dvh min-h-152 w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-8">

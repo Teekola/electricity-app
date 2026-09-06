@@ -51,9 +51,9 @@ describe("GET /daily-statistics", () => {
   it("takes pagination, ordering and a date range from the query string", async () => {
     const response = await get({
       page: "2",
-      pageSize: "5",
-      sortBy: "averagePriceCentsPerKwh",
-      sortDirection: "asc",
+      size: "5",
+      sort: "price",
+      dir: "asc",
       dateFrom: "2024-01-01",
       dateTo: "2024-01-31",
     });
@@ -69,7 +69,7 @@ describe("GET /daily-statistics", () => {
   });
 
   it("rejects a sort column outside the contract's allowlist", async () => {
-    const response = await get({ sortBy: "id" });
+    const response = await get({ sort: "id" });
 
     expect(response.statusCode).toBe(400);
     expect(response.json()).toMatchObject({ code: "BAD_REQUEST" });
@@ -83,7 +83,37 @@ describe("GET /daily-statistics", () => {
   });
 
   it("rejects a page size no client should ask for", async () => {
-    const response = await get({ pageSize: "5000" });
+    const response = await get({ size: "5000" });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("takes a measure's bounds from the query string", async () => {
+    const response = await get({ streakMin: "1", priceMax: "0", size: "200" });
+
+    expect(response.statusCode).toBe(200);
+
+    const { dailyStatistics, pagination } = dailyStatisticsListSchema.parse(response.json());
+
+    expect(pagination.totalDays).toBeGreaterThan(0);
+    expect(pagination.totalDays).toBeLessThan(144);
+    expect(
+      dailyStatistics.every(
+        ({ longestNegativePriceStreakHours, averagePriceCentsPerKwh }) =>
+          longestNegativePriceStreakHours >= 1 && (averagePriceCentsPerKwh ?? 1) <= 0,
+      ),
+    ).toBe(true);
+  });
+
+  it("rejects a measure's range that runs backwards", async () => {
+    const response = await get({ priceMin: "9", priceMax: "2" });
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("rejects a bound that is not a number", async () => {
+    const response = await get({ consMin: "plenty" });
 
     expect(response.statusCode).toBe(400);
   });
