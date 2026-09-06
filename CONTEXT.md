@@ -17,6 +17,11 @@ total production, total consumption, average price, and the day's longest Negati
 Price Streak.
 _Avoid_: daily summary, aggregate, day stats
 
+**Day Detail**:
+What a single Day is presented as in its own right, rather than as one row of Daily
+Statistics. Reached from that Day's row in the list.
+_Avoid_: day view, day page, drilldown, detail view
+
 **Day**:
 A Finnish calendar day, as given by the dataset's own `date` value. Days are not
 uniformly 24 hours long: clock changes make some days 23 hours.

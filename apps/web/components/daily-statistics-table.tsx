@@ -8,7 +8,15 @@ import {
   type Updater,
   useTable,
 } from "@tanstack/react-table";
-import { ArrowDown, ArrowUp, ChevronsUpDown, RotateCcw, TriangleAlert } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronRight,
+  ChevronsUpDown,
+  RotateCcw,
+  TriangleAlert,
+} from "lucide-react";
+import Link from "next/link";
 import type { ReactNode } from "react";
 
 import type { DailyStatistics } from "@repo/api-contract";
@@ -28,6 +36,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { hasFilters, withoutFilters } from "@/lib/daily-statistics-query";
 import { fromSortingState, toSortingState } from "@/lib/daily-statistics-sorting";
+import { dayHref } from "@/lib/day-detail-links";
 import { formatDay, formatMwh, formatPrice, formatStreak } from "@/lib/format";
 import { describeIncompleteness } from "@/lib/incomplete-day";
 import { cn } from "@/lib/utils";
@@ -272,11 +281,21 @@ function SortIcon({ direction }: { readonly direction: false | "asc" | "desc" })
 }
 
 function DayCell({ day }: { readonly day: DailyStatistics }) {
+  const { query } = useDailyStatisticsNavigation();
   const explanation = describeIncompleteness(day);
 
   return (
     <span className="inline-flex items-center gap-1.5">
-      {formatDay(day.date)}
+      <Link
+        href={dayHref(day.date, query)}
+        className="group inline-flex items-center gap-1 rounded-sm underline-offset-4 hover:underline focus-visible:ring-1 focus-visible:ring-ring/50 focus-visible:outline-none"
+      >
+        {formatDay(day.date)}
+        <ChevronRight
+          aria-hidden
+          className="size-3.5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1"
+        />
+      </Link>
       {explanation !== null && (
         <Tooltip>
           <TooltipTrigger
