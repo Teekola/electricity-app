@@ -73,9 +73,6 @@
   --chart-3: oklch(0.648 0.2 131.684);
   --chart-4: oklch(0.532 0.157 131.589);
   --chart-5: oklch(0.453 0.124 130.933);
-  /* --chart-1..5 are five steps of one green, a sequential ramp, so two of them read as the same
-     colour: a second series needs its own hue. Each mode gets its own pair, checked for
-     colour-vision separation and contrast against that mode's surface. */
   --chart-series-1: var(--chart-3);
   --chart-series-2: oklch(0.541 0.247 293.009);
   --radius: 0.625rem;
@@ -138,8 +135,6 @@
   }
   html {
     @apply font-sans;
-    /* Both properties inherit, so the table's own scroller matches the page's. Left to
-       themselves, Chrome and Firefox disagree on a bar's width and its track colour. */
     scrollbar-width: thin;
     scrollbar-color: var(--muted-foreground) transparent;
   }
