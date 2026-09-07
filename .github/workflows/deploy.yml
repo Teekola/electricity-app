@@ -153,7 +153,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       api_url: ${{ steps.output.outputs.api_url }}
-      vercel_org_id: ${{ steps.output.outputs.vercel_org_id }}
       vercel_project_id: ${{ steps.output.outputs.vercel_project_id }}
     env:
       TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
@@ -186,7 +185,7 @@ jobs:
       - id: output
         working-directory: infra
         run: |
-          for name in api_url vercel_org_id vercel_project_id; do
+          for name in api_url vercel_project_id; do
             echo "$name=$(terraform output -raw "$name")" >> "$GITHUB_OUTPUT"
           done
           echo "API: $(terraform output -raw api_url)" >> "$GITHUB_STEP_SUMMARY"
@@ -199,14 +198,26 @@ jobs:
       name: production
       url: ${{ steps.deploy.outputs.url }}
     env:
-      VERCEL_ORG_ID: ${{ needs.infra.outputs.vercel_org_id }}
-      VERCEL_PROJECT_ID: ${{ needs.infra.outputs.vercel_project_id }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_API_TOKEN }}
+      VERCEL_PROJECT: ${{ needs.infra.outputs.vercel_project_id }}
+      VERCEL_TEAM: ${{ vars.VERCEL_TEAM }}
     steps:
       - uses: actions/checkout@v5
 
+      # `link` writes .vercel/project.json with both the project and the account
+      # that owns it. Passing those as VERCEL_PROJECT_ID/VERCEL_ORG_ID instead needs
+      # an org id, and a personal account has no team for Terraform to report.
       - id: deploy
         run: |
+          scope=()
+          if [[ -n "$VERCEL_TEAM" ]]; then
+            scope=(--scope "$VERCEL_TEAM")
+          fi
+
+          npx --yes vercel@59 link --yes \
+            --project "$VERCEL_PROJECT" --token "$VERCEL_TOKEN" "${scope[@]}"
+
           url="$(npx --yes vercel@59 deploy --prod --yes --archive=tgz \
-            --token "${{ secrets.VERCEL_API_TOKEN }}")"
+            --token "$VERCEL_TOKEN" "${scope[@]}")"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "Frontend: $url" >> "$GITHUB_STEP_SUMMARY"
