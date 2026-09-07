@@ -12,6 +12,7 @@ import type {
 import { isoDateSchema } from "@repo/api-contract";
 
 import { DayPriceChart, DayProductionChart } from "@/components/day-charts";
+import { PageHeader } from "@/components/page-header";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -58,22 +59,23 @@ export async function DayDetail({ params, searchParams }: DayDetailProps) {
   if (dayDetail === null) notFound();
 
   return (
-    <DayDetailLayout
-      breadcrumb={
-        <Breadcrumb>
-          <BreadcrumbList>
-            <BreadcrumbItem>
-              <BreadcrumbLink render={<Link href={listHref(search)} />}>All days</BreadcrumbLink>
-            </BreadcrumbItem>
-            <BreadcrumbSeparator />
-            <BreadcrumbItem>
-              <BreadcrumbPage>{formatDay(day.data)}</BreadcrumbPage>
-            </BreadcrumbItem>
-          </BreadcrumbList>
-        </Breadcrumb>
-      }
-      heading={dayDetailTitle(day.data)}
-    >
+    <>
+      <PageHeader
+        breadcrumb={
+          <Breadcrumb>
+            <BreadcrumbList>
+              <BreadcrumbItem>
+                <BreadcrumbLink render={<Link href={listHref(search)} />}>All days</BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage>{formatDay(day.data)}</BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
+        }
+        heading={dayDetailTitle(day.data)}
+      />
       <DayDetailFigures
         dailyStatistics={dayDetail.dailyStatistics}
         peakConsumptionRatioHours={dayDetail.peakConsumptionRatioHours}
@@ -84,16 +86,17 @@ export async function DayDetail({ params, searchParams }: DayDetailProps) {
         cheapestHours={dayDetail.cheapestHours}
         hasConsumption={dayDetail.dailyStatistics.totalConsumptionMwh !== null}
       />
-    </DayDetailLayout>
+    </>
   );
 }
 
 export function DayDetailFallback() {
   return (
-    <DayDetailLayout
-      breadcrumb={<Skeleton className="h-4 w-40" />}
-      heading={<Skeleton className="h-8 w-80" />}
-    >
+    <>
+      <PageHeader
+        breadcrumb={<Skeleton className="h-4 w-40" />}
+        heading={<Skeleton className="h-8 w-80" />}
+      />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, index) => (
           <Skeleton key={index} className="h-24 w-full" />
@@ -101,27 +104,6 @@ export function DayDetailFallback() {
       </div>
       <Skeleton className="h-80 w-full" />
       <Skeleton className="h-80 w-full" />
-    </DayDetailLayout>
-  );
-}
-
-function DayDetailLayout({
-  breadcrumb,
-  heading,
-  children,
-}: {
-  readonly breadcrumb: ReactNode;
-  readonly heading: ReactNode;
-  readonly children?: ReactNode;
-}) {
-  return (
-    <>
-      <header className="space-y-2">
-        {/* Holds the breadcrumb's height, so the heading does not shift up before the Day lands. */}
-        <div className="flex min-h-4 items-center">{breadcrumb}</div>
-        <h1 className="flex min-h-8 items-center text-3xl font-semibold">{heading}</h1>
-      </header>
-      {children}
     </>
   );
 }
