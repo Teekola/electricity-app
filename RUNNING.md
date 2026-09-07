@@ -41,6 +41,9 @@ pnpm test
 The integration tests read the seeded database rather than mocking it, so the container has to be
 up first. Nothing in this app writes to the database, so the tests cannot pollute it.
 
+`make check` runs the whole set CI runs — lint, typecheck, tests and both builds — and starts the
+database itself. Formatting is not in it: `lint-staged` already applies Prettier on commit.
+
 ## End-to-end tests
 
 The suite drives a real browser, which needs one install per machine:

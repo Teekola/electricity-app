@@ -4,6 +4,7 @@ A web application presenting Finnish hourly electricity production, consumption 
 provided as a fixed historical dataset, as per-day statistics and per-day detail.
 
 - **[RUNNING.md](RUNNING.md)** — how to install, run and test the project.
+- **[DEPLOYING.md](DEPLOYING.md)** — the cloud setup, the Terraform stacks and the CI pipeline.
 - **[ASSIGNMENT.md](ASSIGNMENT.md)** — the original assignment brief and the dataset's schema.
 - **[CONTEXT.md](CONTEXT.md)** — the domain vocabulary this codebase and these docs use.
 

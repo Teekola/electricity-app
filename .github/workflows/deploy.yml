@@ -1,0 +1,212 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+# One deploy at a time, and never cancelled: a half-applied Terraform run or a
+# half-finished migration is worse than a queued one.
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  TF_IN_AUTOMATION: "true"
+
+# CI is not re-run here: the pull request's own run is the gate. That only holds while main
+# is protected with the CI checks required and "up to date before merging" on, so a merge
+# cannot carry in an untested tree. See DEPLOYING.md.
+#
+# The stack is applied in two passes with the migration between them, so no API revision
+# ever serves against a schema older than its own code.
+jobs:
+  image:
+    name: Build API image
+    runs-on: ubuntu-latest
+    outputs:
+      image: ${{ steps.ref.outputs.image }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: auth
+        uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+          token_format: access_token
+
+      - id: ref
+        run: |
+          echo "image=${{ vars.GCP_REGION }}-docker.pkg.dev/${{ vars.GCP_PROJECT_ID }}/${{ vars.ARTIFACT_REGISTRY_REPO }}/api" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.GCP_REGION }}-docker.pkg.dev
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/build-push-action@v6
+        with:
+          # apps/api/Dockerfile prunes the workspace, so the context is the repo root.
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ steps.ref.outputs.image }}:${{ github.sha }}
+            ${{ steps.ref.outputs.image }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # Provisioning and migrating share a job so the instance's outputs stay local to it.
+  database:
+    name: Provision, migrate and seed
+    needs: image
+    runs-on: ubuntu-latest
+    env:
+      TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
+      TF_VAR_region: ${{ vars.GCP_REGION }}
+      TF_VAR_api_image: ${{ needs.image.outputs.image }}:${{ github.sha }}
+      TF_VAR_vercel_api_token: ${{ secrets.VERCEL_API_TOKEN }}
+      TF_VAR_vercel_team: ${{ vars.VERCEL_TEAM }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v3
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.1
+          terraform_wrapper: false
+
+      - name: Init
+        working-directory: infra
+        run: terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      - name: Validate
+        working-directory: infra
+        run: |
+          terraform fmt -check -recursive
+          terraform validate
+
+      # Targeted so this cannot roll out the new image yet, and targeted at the module so
+      # anything added to it is covered without being listed here.
+      - name: Apply the data layer
+        working-directory: infra
+        run: terraform apply -input=false -auto-approve -target=module.database
+
+      - id: output
+        working-directory: infra
+        run: |
+          for name in sql_connection_name database_name database_user database_password_secret; do
+            echo "$name=$(terraform output -raw "$name")" >> "$GITHUB_OUTPUT"
+          done
+
+      - name: Install the Cloud SQL Auth Proxy
+        run: |
+          curl -fsSL -o cloud-sql-proxy \
+            "https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.25.4/cloud-sql-proxy.linux.amd64"
+          chmod +x cloud-sql-proxy
+
+      # One step, so the password never leaves it. 5433 because the runner owns 5432.
+      - name: Apply migrations and seed the dataset
+        run: |
+          password="$(gcloud secrets versions access latest \
+            --secret="${{ steps.output.outputs.database_password_secret }}")"
+          echo "::add-mask::$password"
+
+          ./cloud-sql-proxy --port 5433 --health-check \
+            "${{ steps.output.outputs.sql_connection_name }}" &
+          proxy=$!
+          trap 'kill "$proxy" 2>/dev/null || true' EXIT
+          # `wait` polls the health-check server the flag above starts.
+          ./cloud-sql-proxy wait --max 60s
+
+          export DATABASE_URL="postgresql://${{ steps.output.outputs.database_user }}:${password}@127.0.0.1:5433/${{ steps.output.outputs.database_name }}"
+          make db-migrate
+
+  # Pass two: everything else, including the Cloud Run revision built from this commit.
+  infra:
+    name: Roll out the API
+    needs: [image, database]
+    runs-on: ubuntu-latest
+    outputs:
+      api_url: ${{ steps.output.outputs.api_url }}
+      vercel_org_id: ${{ steps.output.outputs.vercel_org_id }}
+      vercel_project_id: ${{ steps.output.outputs.vercel_project_id }}
+    env:
+      TF_VAR_project_id: ${{ vars.GCP_PROJECT_ID }}
+      TF_VAR_region: ${{ vars.GCP_REGION }}
+      TF_VAR_api_image: ${{ needs.image.outputs.image }}:${{ github.sha }}
+      TF_VAR_vercel_api_token: ${{ secrets.VERCEL_API_TOKEN }}
+      TF_VAR_vercel_team: ${{ vars.VERCEL_TEAM }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: google-github-actions/auth@v3
+        with:
+          project_id: ${{ vars.GCP_PROJECT_ID }}
+          workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ vars.GCP_SERVICE_ACCOUNT }}
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.16.1
+          terraform_wrapper: false
+
+      - name: Init
+        working-directory: infra
+        run: terraform init -input=false -backend-config="bucket=${{ vars.TF_STATE_BUCKET }}"
+
+      - name: Apply
+        working-directory: infra
+        run: terraform apply -input=false -auto-approve
+
+      - id: output
+        working-directory: infra
+        run: |
+          for name in api_url vercel_org_id vercel_project_id; do
+            echo "$name=$(terraform output -raw "$name")" >> "$GITHUB_OUTPUT"
+          done
+          echo "API: $(terraform output -raw api_url)" >> "$GITHUB_STEP_SUMMARY"
+
+  web:
+    name: Deploy frontend
+    needs: infra
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: ${{ steps.deploy.outputs.url }}
+    env:
+      VERCEL_ORG_ID: ${{ needs.infra.outputs.vercel_org_id }}
+      VERCEL_PROJECT_ID: ${{ needs.infra.outputs.vercel_project_id }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - id: deploy
+        run: |
+          url="$(npx --yes vercel@59 deploy --prod --yes --archive=tgz \
+            --token "${{ secrets.VERCEL_API_TOKEN }}")"
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Frontend: $url" >> "$GITHUB_STEP_SUMMARY"

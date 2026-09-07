@@ -9,6 +9,10 @@ help: ## Show this help
 dev: db-up ## Start the database, then every dev server on the host
 	pnpm dev
 
+.PHONY: check
+check: db-up ## Run everything CI checks: lint, typecheck, tests and both builds
+	pnpm turbo run lint typecheck test build
+
 .PHONY: up
 up: ## Run the full containerised stack: Postgres, Adminer and the API image
 	docker compose up -d --build --wait
@@ -36,3 +40,8 @@ db-down: down ## Alias for down
 db-reset: ## Drop the volume and re-seed from db/init-db.tar.gz
 	docker compose down -v
 	$(MAKE) db-up
+
+.PHONY: db-migrate
+db-migrate: ## Migrate and seed whatever DATABASE_URL points at (Compose seeds itself; Cloud SQL cannot)
+	pnpm --filter @repo/api run db:deploy
+	./scripts/seed-db.sh

@@ -1,0 +1,18 @@
+# A .vercelignore replaces .gitignore for the upload, so the build output and caches
+# have to be repeated here. Workspace package.json files must stay, or the root
+# pnpm install breaks.
+node_modules
+.turbo
+.next
+dist
+coverage
+playwright-report
+test-results
+*.tsbuildinfo
+
+.github
+db
+docs
+infra
+scripts
+login.png
