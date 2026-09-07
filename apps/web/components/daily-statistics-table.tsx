@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 
 interface ColumnMeta {
   readonly numeric?: boolean;
+  /** Sized for the widest value the dataset can hold. */
   readonly width: string;
 }
 
@@ -55,19 +56,19 @@ const columns = helper.columns([
     id: "date",
     header: "Day",
     cell: ({ row }) => <DayCell day={row.original} />,
-    meta: { width: "w-36" },
+    meta: { width: "w-28" },
   }),
   helper.accessor("totalProductionMwh", {
     id: "prod",
     header: "Production (MWh)",
     cell: ({ row }) => formatMwh(row.original.totalProductionMwh),
-    meta: { numeric: true, width: "w-40" },
+    meta: { numeric: true, width: "w-36" },
   }),
   helper.accessor("totalConsumptionMwh", {
     id: "cons",
     header: "Consumption (MWh)",
     cell: ({ row }) => formatMwh(row.original.totalConsumptionMwh),
-    meta: { numeric: true, width: "w-44" },
+    meta: { numeric: true, width: "w-40" },
   }),
   helper.accessor("averagePriceCentsPerKwh", {
     id: "price",
@@ -79,7 +80,7 @@ const columns = helper.columns([
     id: "streak",
     header: "Longest negative streak",
     cell: ({ row }) => formatStreak(row.original.longestNegativePriceStreakHours),
-    meta: { numeric: true, width: "w-52" },
+    meta: { numeric: true, width: "w-48" },
   }),
 ]);
 
@@ -208,7 +209,7 @@ function DailyStatisticsTableFrame({
 }) {
   return (
     <Table
-      className={cn("min-w-212 table-fixed", fill && "h-full")}
+      className={cn("min-w-3xl table-fixed", fill && "h-full")}
       containerClassName="min-h-64 flex-1 overflow-y-auto  border pr-1 [scrollbar-gutter:stable]"
     >
       <colgroup>
@@ -256,7 +257,7 @@ function PlaceholderRows({ count }: { readonly count: number }) {
     <TableRow key={row}>
       {columns.map((column) => (
         <TableCell key={column.id}>
-          <Skeleton className={cn("h-4 w-16", column.meta?.numeric && "ml-auto")} />
+          <Skeleton className={cn("h-4", column.meta?.numeric ? "ml-auto w-16" : "w-24")} />
         </TableCell>
       ))}
     </TableRow>
