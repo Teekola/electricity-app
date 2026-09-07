@@ -27,11 +27,6 @@ output "database_password_secret" {
 }
 
 output "vercel_project_id" {
-  description = "Set as VERCEL_PROJECT_ID for the Vercel CLI"
+  description = "Passed to `vercel link --project`"
   value       = vercel_project.web.id
-}
-
-output "vercel_org_id" {
-  description = "Set as VERCEL_ORG_ID for the Vercel CLI"
-  value       = vercel_project.web.team_id
 }
