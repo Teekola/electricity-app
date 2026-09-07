@@ -29,7 +29,12 @@ export interface DayProductionChartProps {
 export function DayProductionChart({ dataPoints, hasConsumption }: DayProductionChartProps) {
   return (
     <ChartContainer config={config} className="h-64 w-full">
-      <LineChart accessibilityLayer data={[...dataPoints]} margin={{ left: 8, right: 8, top: 8 }}>
+      <LineChart
+        accessibilityLayer
+        aria-label={hasConsumption ? "Production and consumption by hour" : "Production by hour"}
+        data={[...dataPoints]}
+        margin={{ left: 8, right: 8, top: 8 }}
+      >
         <CartesianGrid vertical={false} />
         <XAxis {...hourAxisProps} />
         {/* One axis for both series: a second scale would invent a comparison the data lacks. */}

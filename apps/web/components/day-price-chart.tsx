@@ -53,6 +53,7 @@ export function DayPriceChart({ dataPoints, cheapestHours }: DayPriceChartProps)
     <ChartContainer config={config} className="h-64 w-full">
       <BarChart
         accessibilityLayer
+        aria-label="Price by hour"
         data={[...dataPoints]}
         margin={{ left: 8, right: 8, top: 16, bottom: 8 }}
       >
