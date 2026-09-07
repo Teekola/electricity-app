@@ -26,6 +26,14 @@ test-results/
 .env.*
 !.env.example
 
+# terraform
+.terraform/
+.terraform.tfstate.lock.info
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
 # logs
 *.log
 npm-debug.log*

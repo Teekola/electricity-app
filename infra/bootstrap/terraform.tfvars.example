@@ -1,0 +1,5 @@
+project_id = "electricity-app-123456"
+region     = "europe-north1"
+
+# The only repository allowed to authenticate as the deployer service account.
+github_repository = "Teekola/electricity-app"

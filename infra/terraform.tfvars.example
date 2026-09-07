@@ -1,0 +1,11 @@
+project_id = "electricity-app-123456"
+region     = "europe-north1"
+
+# CI passes this on the command line; only needed for a local apply.
+api_image = "europe-north1-docker.pkg.dev/electricity-app-123456/electricity-images/api:latest"
+
+# Also readable from the VERCEL_API_TOKEN environment variable.
+vercel_api_token = "..."
+
+# Leave unset for a personal Vercel account.
+# vercel_team = "my-team"
