@@ -14,6 +14,8 @@ next-env.d.ts
 
 # test output
 coverage/
+playwright-report/
+test-results/
 
 # caches
 .turbo/

@@ -25,6 +25,12 @@
     },
     "test": {
       "dependsOn": ["^build", "db:generate"]
+    },
+    "e2e": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/db/**", "$TURBO_ROOT$/docker-compose.yml"],
+      "outputs": ["playwright-report/**"],
+      "passThroughEnv": ["PLAYWRIGHT_*", "CI"]
     }
   }
 }

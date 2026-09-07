@@ -1,0 +1,22 @@
+{
+  "name": "@repo/e2e",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "e2e": "playwright test",
+    "e2e:install": "playwright install --with-deps chromium",
+    "lint": "eslint . --max-warnings 0",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "~1.63.0",
+    "@repo/api": "workspace:*",
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@repo/web": "workspace:*",
+    "@types/node": "~24.13.3",
+    "eslint": "~9.39.5",
+    "typescript": "~6.0.3"
+  }
+}

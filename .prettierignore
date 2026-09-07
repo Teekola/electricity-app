@@ -5,4 +5,6 @@ build
 .next
 out
 .turbo
+playwright-report
+test-results
 pnpm-lock.yaml
