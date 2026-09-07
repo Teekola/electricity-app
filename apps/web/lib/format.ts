@@ -10,6 +10,17 @@ const centsPerKilowattHour = new Intl.NumberFormat(LOCALE, {
   maximumFractionDigits: 2,
 });
 
+const hourlyPrice = new Intl.NumberFormat(LOCALE, {
+  minimumFractionDigits: 3,
+  maximumFractionDigits: 3,
+});
+
+const percent = new Intl.NumberFormat(LOCALE, {
+  style: "percent",
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
 const MONTHS = [
   "Jan",
   "Feb",
@@ -34,9 +45,23 @@ export function formatPrice(value: number | null): string {
   return value === null ? NOT_MEASURED : centsPerKilowattHour.format(value);
 }
 
-/** The longest Negative Price Streak. Zero is measured, not missing, hence an en dash. */
+/**
+ * One hour's price, to the market's own resolution. Day-ahead prices are quoted in €/MWh to two
+ * decimals, and 1 c/kWh is 10 €/MWh, so the third decimal here is one tick rather than noise.
+ * Dropping it prints hours that were really ranked against each other as equal.
+ */
+export function formatHourlyPrice(value: number | null): string {
+  return value === null ? NOT_MEASURED : hourlyPrice.format(value);
+}
+
+/** A fraction, such as an hour's consumption against its own production. */
+export function formatPercent(value: number | null): string {
+  return value === null ? NOT_MEASURED : percent.format(value);
+}
+
+/** The longest Negative Price Streak, which is always measured: zero hours is a real answer. */
 export function formatStreak(hours: number): string {
-  return hours === 0 ? "–" : `${String(hours)} h`;
+  return `${String(hours)} h`;
 }
 
 /**

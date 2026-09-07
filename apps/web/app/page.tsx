@@ -17,7 +17,8 @@ export default function Page({ searchParams }: PageProps<"/">) {
         <p className="max-w-2xl text-sm text-muted-foreground">
           Finnish hourly production, consumption and price data, summarised per day. Consumption was
           only measured from August 2023 onwards, and days the dataset does not cover in full are
-          marked, because their totals are not comparable to a full day&apos;s.
+          marked, because their totals are not comparable to a full day&apos;s. Click a date to open
+          that day.
         </p>
       </header>
       <Suspense fallback={<DailyStatisticsFallback />}>

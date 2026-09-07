@@ -1,6 +1,38 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDay, formatMwh, formatPrice, formatStreak } from "./format";
+import {
+  formatDay,
+  formatHourlyPrice,
+  formatMwh,
+  formatPercent,
+  formatPrice,
+  formatStreak,
+} from "./format";
+
+describe("formatHourlyPrice", () => {
+  it("keeps the source's three decimals, so hours that differ do not read as equal", () => {
+    expect(formatHourlyPrice(0)).toBe("0.000");
+    expect(formatHourlyPrice(0.001)).toBe("0.001");
+  });
+
+  it("renders an unpriced hour as an em dash", () => {
+    expect(formatHourlyPrice(null)).toBe("—");
+  });
+});
+
+describe("formatPercent", () => {
+  it("reads a ratio as the percentage a reader compares hours by", () => {
+    expect(formatPercent(0.159829)).toBe("16.0%");
+  });
+
+  it("keeps one decimal, because the Days differ by less than a whole percent", () => {
+    expect(formatPercent(0.131716)).toBe("13.2%");
+  });
+
+  it("renders an unmeasured ratio as an em dash", () => {
+    expect(formatPercent(null)).toBe("—");
+  });
+});
 
 describe("formatMwh", () => {
   it("groups thousands and drops the decimals, which are noise at this magnitude", () => {
@@ -31,8 +63,8 @@ describe("formatPrice", () => {
 });
 
 describe("formatStreak", () => {
-  it("renders no streak as an en dash, so the column reads as empty rather than measured", () => {
-    expect(formatStreak(0)).toBe("–");
+  it("counts a Day with no negative hours as zero, which is measured, not missing", () => {
+    expect(formatStreak(0)).toBe("0 h");
   });
 
   it("counts a single hour", () => {

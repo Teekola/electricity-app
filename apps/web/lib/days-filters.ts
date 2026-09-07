@@ -2,6 +2,7 @@ import type { DailyStatisticsMeasure, DaysQuery } from "@repo/api-contract";
 import { DAYS_MEASURE_BOUNDS, isNullableMeasure } from "@repo/api-contract";
 
 import { formatDay, formatMwh, formatPrice } from "./format";
+import { joinWithAnd } from "./list-phrase";
 
 interface Measure {
   /** Written out, so lowercasing it reads as prose in a sentence or a label. */
@@ -42,10 +43,7 @@ export function describeExcludedDays(measures: readonly DailyStatisticsMeasure[]
 
   if (measurements.length === 0) return null;
 
-  const [last, ...rest] = [...measurements].reverse();
-  const named = rest.length === 0 ? last : `${rest.reverse().join(", ")} and ${last}`;
-
-  return `Days that never measured ${named} are excluded.`;
+  return `Days that never measured ${joinWithAnd(measurements)} are excluded.`;
 }
 
 export function describeMeasureFilter(query: DaysQuery, measure: DailyStatisticsMeasure): string {
