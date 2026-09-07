@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { daysListSchema } from "@repo/api-contract";
+import { dayDetailSchema, daysListSchema } from "@repo/api-contract";
 
 import { buildApp } from "../../app.js";
 
@@ -116,5 +116,49 @@ describe("GET /days", () => {
     const response = await get({ consMin: "plenty" });
 
     expect(response.statusCode).toBe(400);
+  });
+});
+
+describe("GET /days/:date", () => {
+  let app: FastifyInstance;
+
+  beforeAll(async () => {
+    app = await buildApp();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  function get(date: string) {
+    return app.inject({ method: "GET", url: `/days/${date}` });
+  }
+
+  it("serves one Day in full", async () => {
+    const response = await get("2024-06-01");
+
+    expect(response.statusCode).toBe(200);
+
+    const { dailyStatistics, dataPoints, peakConsumptionRatioHours, cheapestHours } =
+      dayDetailSchema.parse(response.json());
+
+    expect(dailyStatistics).toMatchObject({ date: "2024-06-01", hoursWithData: 24 });
+    expect(dataPoints).toHaveLength(24);
+    expect(peakConsumptionRatioHours).toMatchObject([{ hour: "20:00" }]);
+    expect(cheapestHours.map(({ hour }) => hour)).toEqual(["00:00", "04:00", "05:00"]);
+  });
+
+  it("answers 404 for a Day the dataset does not cover", async () => {
+    const response = await get("2019-01-01");
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ code: "NOT_FOUND" });
+  });
+
+  it("rejects a segment that is not a date at all", async () => {
+    const response = await get("yesterday");
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ code: "BAD_REQUEST" });
   });
 });

@@ -9,5 +9,5 @@ export async function getDaysWithStatistics(query: DaysQuery): Promise<DaysList>
   cacheLife("max");
   cacheTag("days");
 
-  return fetchFromApi("/days", query);
+  return fetchFromApi("/days", { query });
 }

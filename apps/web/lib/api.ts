@@ -1,12 +1,20 @@
 import type * as z from "zod";
 
-import type { ApiEndpointPath, ApiError, ApiQuery, ApiResponse } from "@repo/api-contract";
+import type {
+  ApiEndpointPath,
+  ApiError,
+  ApiParams,
+  ApiQuery,
+  ApiResponse,
+} from "@repo/api-contract";
 import { apiEndpoints, apiErrorSchema } from "@repo/api-contract";
 
 import { env } from "./env";
 
 /** A non-2xx response. `apiError` is absent when the body was not the contract's error shape. */
 export class ApiResponseError extends Error {
+  readonly status: number;
+
   constructor({
     path,
     status,
@@ -18,6 +26,7 @@ export class ApiResponseError extends Error {
   }) {
     super(apiError?.message ?? `Request to ${path} failed with status ${status}`);
     this.name = "ApiResponseError";
+    this.status = status;
   }
 }
 
@@ -44,14 +53,32 @@ function toSearchParams(query: Record<string, unknown>): string {
   return params.toString();
 }
 
+/** Fills a declared path's `:param` placeholders. An unfilled one is a bug, not a request. */
+function toPathname(path: string, params: Record<string, unknown>): string {
+  return path.replace(/:(\w+)/g, (_, name: string) => {
+    const value = params[name];
+
+    if (typeof value !== "string" && typeof value !== "number") {
+      throw new Error(`Request to ${path} needs a ${name} parameter`);
+    }
+
+    return encodeURIComponent(String(value));
+  });
+}
+
+export interface ApiRequest<P extends ApiEndpointPath> {
+  readonly params?: ApiParams<P>;
+  readonly query?: ApiQuery<P>;
+}
+
 /** Parses the response against the schema `apiEndpoints` pairs with `path`. */
 export async function fetchFromApi<P extends ApiEndpointPath>(
   path: P,
-  query?: ApiQuery<P>,
+  { params, query }: ApiRequest<P> = {},
 ): Promise<ApiResponse<P>> {
   const { response: responseSchema } = apiEndpoints[path];
 
-  const url = new URL(path, env.NEXT_PUBLIC_API_BASE_URL);
+  const url = new URL(toPathname(path, params ?? {}), env.NEXT_PUBLIC_API_BASE_URL);
   url.search = toSearchParams(query ?? {});
 
   const response = await fetch(url);

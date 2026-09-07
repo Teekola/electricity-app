@@ -33,6 +33,23 @@ not continue across midnight — a Day's longest streak is measured within that 
 only.
 _Avoid_: negative period, cheap streak, negative window
 
+**Peak Consumption Ratio Hours**:
+The Data Points within a Day whose consumption is the largest fraction of that same
+hour's production. Consumption has never exceeded production anywhere in this dataset,
+so these name the hours the production surplus was thinnest, not hours of shortfall.
+Plural for the same reason Cheapest Hours is: hours measuring identically are
+equally the peak, and a tie is never broken arbitrarily. A Day whose Data Points carry
+no consumption has none.
+_Avoid_: peak hour, peak demand, busiest hour, deficit hour
+
+**Cheapest Hours**:
+The three Data Points of a Day with the lowest price, cheapest first, and every further
+Data Point priced the same as the third. A tie is never broken arbitrarily: hours the
+dataset prices identically are equally cheap, so a Day whose every hour costs the same
+has no cheapest three but twenty-four. A Day holding fewer than three priced Data Points
+has correspondingly fewer, and one holding none has none.
+_Avoid_: cheap hours, best hours, off-peak, low-price window
+
 **Incomplete Day**:
 A Day for which the dataset holds fewer Data Points than the day has hours, or whose
 Data Points lack a measurement. Its totals are not comparable to a complete Day's, so
