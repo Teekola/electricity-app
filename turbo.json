@@ -8,23 +8,28 @@
       "inputs": ["prisma/schema.prisma"],
       "outputs": ["src/generated/**"]
     },
+    "types:generate": {
+      "dependsOn": ["^build"],
+      "inputs": ["app/**", "next.config.ts"],
+      "outputs": ["next-env.d.ts", ".next/types/**"]
+    },
     "build": {
-      "dependsOn": ["^build", "db:generate"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "dependsOn": ["^build", "db:generate", "types:generate"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "!.next/types/**"]
     },
     "dev": {
-      "dependsOn": ["^build", "db:generate"],
+      "dependsOn": ["^build", "db:generate", "types:generate"],
       "cache": false,
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^build", "db:generate"]
+      "dependsOn": ["^build", "db:generate", "types:generate"]
     },
     "typecheck": {
-      "dependsOn": ["^build", "db:generate"]
+      "dependsOn": ["^build", "db:generate", "types:generate"]
     },
     "test": {
-      "dependsOn": ["^build", "db:generate"]
+      "dependsOn": ["^build", "db:generate", "types:generate"]
     },
     "e2e": {
       "dependsOn": ["^build"],
