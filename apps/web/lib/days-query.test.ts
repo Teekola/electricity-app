@@ -5,6 +5,7 @@ import {
   hasFilters,
   measureRanges,
   parseDaysQuery,
+  readUrlSearchParams,
   toSearchParams,
   withDateRange,
   withMeasureRanges,
@@ -308,5 +309,33 @@ describe("hasFilters", () => {
 
   it("ignores the ordering and the page, which are not filters", () => {
     expect(hasFilters(parseDaysQuery({ page: "3", sort: "price", dir: "asc" }))).toBe(false);
+  });
+});
+
+describe("readUrlSearchParams", () => {
+  it("is empty for a URL carrying no query", () => {
+    expect(readUrlSearchParams(new URLSearchParams())).toEqual({});
+  });
+
+  it("reads a single value as a string, which is what the parser reads back", () => {
+    expect(readUrlSearchParams(new URLSearchParams("sort=price&dir=asc"))).toEqual({
+      sort: "price",
+      dir: "asc",
+    });
+  });
+
+  it("hands a repeated parameter on as the array Next would, so the parser drops it either way", () => {
+    const repeated = readUrlSearchParams(new URLSearchParams("sort=price&sort=prod"));
+
+    expect(repeated).toEqual({ sort: ["price", "prod"] });
+    expect(parseDaysQuery(repeated).sort).toBe("date");
+  });
+
+  it("keeps a blank value, which the contract reads as no bound", () => {
+    expect(readUrlSearchParams(new URLSearchParams("prodMin="))).toEqual({ prodMin: "" });
+  });
+
+  it("survives the round trip a breadcrumb makes back to the list it came from", () => {
+    expect(parseDaysQuery(readUrlSearchParams(toSearchParams(CHOSEN)))).toEqual(CHOSEN);
   });
 });

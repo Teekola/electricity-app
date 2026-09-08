@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -13,11 +13,10 @@ import type {
 import { isoDateSchema } from "@repo/api-contract";
 
 import { DayPriceChart, DayProductionChart } from "@/components/day-charts";
-import { PageHeader } from "@/components/page-header";
+import { DaysLink, DaysLinkFallback } from "@/components/days-link";
 import {
   Breadcrumb,
   BreadcrumbItem,
-  BreadcrumbLink,
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
@@ -25,10 +24,9 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { rankCheapestHours } from "@/lib/cheapest-hours";
 import { getDayDetail } from "@/lib/day-detail";
-import { listHref } from "@/lib/day-detail-links";
-import type { SearchParams } from "@/lib/days-query";
 import {
   formatDay,
+  formatDayDetailTitle,
   formatHourlyPrice,
   formatMwh,
   formatPercent,
@@ -38,39 +36,9 @@ import {
 import { describeIncompleteness } from "@/lib/incomplete-day";
 import { joinWithAnd } from "@/lib/list-phrase";
 
-/** Names the Day Detail once, so the tab and the heading cannot drift apart. */
-export function dayDetailTitle(date: IsoDate): string {
-  return `Electricity data on ${formatDay(date)}`;
-}
+type DayParams = Promise<{ date: string }>;
 
-export interface DayDetailProps {
-  readonly params: Promise<{ date: string }>;
-  readonly searchParams: Promise<SearchParams>;
-}
-
-export function DayDetail({ params, searchParams }: DayDetailProps) {
-  return (
-    <>
-      <PageHeader
-        breadcrumb={
-          <Suspense fallback={<Skeleton className="h-4 w-40" />}>
-            <DayBreadcrumb params={params} searchParams={searchParams} />
-          </Suspense>
-        }
-        heading={
-          <Suspense fallback={<Skeleton className="h-9 w-80" />}>
-            <DayHeading params={params} />
-          </Suspense>
-        }
-      />
-      <Suspense fallback={<DayDetailBodyFallback />}>
-        <DayDetailBody params={params} />
-      </Suspense>
-    </>
-  );
-}
-
-async function readDate(params: DayDetailProps["params"]): Promise<IsoDate> {
+async function readDate(params: DayParams): Promise<IsoDate> {
   const day = isoDateSchema.safeParse((await params).date);
 
   // A segment that is not a date never reaches a fetch.
@@ -79,18 +47,20 @@ async function readDate(params: DayDetailProps["params"]): Promise<IsoDate> {
   return day.data;
 }
 
-async function DayHeading({ params }: Pick<DayDetailProps, "params">) {
-  return dayDetailTitle(await readDate(params));
+export async function DayHeading({ params }: { readonly params: DayParams }) {
+  return formatDayDetailTitle(await readDate(params));
 }
 
-async function DayBreadcrumb({ params, searchParams }: DayDetailProps) {
-  const [date, search] = await Promise.all([readDate(params), searchParams]);
+export async function DayBreadcrumb({ params }: { readonly params: DayParams }) {
+  const date = await readDate(params);
 
   return (
     <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbLink render={<Link href={listHref(search)} />}>All days</BreadcrumbLink>
+          <Suspense fallback={<DaysLinkFallback />}>
+            <DaysLink />
+          </Suspense>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>
@@ -101,8 +71,16 @@ async function DayBreadcrumb({ params, searchParams }: DayDetailProps) {
   );
 }
 
-async function DayDetailBody({ params }: Pick<DayDetailProps, "params">) {
-  const dayDetail = await getDayDetail(await readDate(params));
+export async function DayDetailBody({ params }: { readonly params: DayParams }) {
+  return <DayFiguresAndCharts date={await readDate(params)} />;
+}
+
+async function DayFiguresAndCharts({ date }: { readonly date: IsoDate }) {
+  "use cache";
+  cacheLife("max");
+  cacheTag("day-detail");
+
+  const dayDetail = await getDayDetail(date);
 
   if (dayDetail === null) notFound();
 
@@ -255,7 +233,7 @@ function FigureCard({ label, children }: { readonly label: string; readonly chil
   );
 }
 
-function DayDetailBodyFallback() {
+export function DayDetailBodyFallback() {
   return (
     <>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

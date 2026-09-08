@@ -16,7 +16,7 @@ test("opens a Day from the list and returns to the list as it was left", async (
   await expect(page.getByText("Cheapest hours")).toBeVisible();
   await expect(page.getByText("Longest negative price streak")).toBeVisible();
 
-  await page.getByRole("link", { name: "All days" }).click();
+  await page.getByRole("link", { name: "Days" }).click();
 
   // The ordering the reader came from is carried back, so the breadcrumb is not a reset.
   await expect(page).toHaveURL(/sort=price/);

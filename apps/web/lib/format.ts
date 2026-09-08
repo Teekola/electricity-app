@@ -65,11 +65,15 @@ export function formatStreak(hours: number): string {
 }
 
 /**
- * A Day, spelled out and zero-padded to a constant width. Read straight from the ISO
- * string rather than through a `Date`, which resolves midnight in the reader's zone.
+ * A Day, spelled out and zero-padded to a constant width.
  */
 export function formatDay(date: IsoDate): string {
   const [year, month, day] = date.split("-");
 
   return `${day} ${MONTHS[Number(month) - 1] ?? month} ${year}`;
+}
+
+/** Names the Day Detail once, so the tab and the heading cannot drift apart. */
+export function formatDayDetailTitle(date: IsoDate): string {
+  return `Electricity data on ${formatDay(date)}`;
 }
