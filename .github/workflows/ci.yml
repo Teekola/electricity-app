@@ -8,7 +8,7 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# Stands in for the .env files RUNNING.md has you copy locally, which CI does not have.
+# Stands in for the .env files `make setup` writes locally, which CI does not have.
 env:
   DATABASE_URL: postgresql://academy:academy@localhost:5432/electricity
   NEXT_PUBLIC_API_BASE_URL: http://localhost:3001
