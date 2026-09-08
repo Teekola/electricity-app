@@ -153,10 +153,9 @@ The schema has to be current before the code that assumes it starts serving. So 
 new Cloud Run revision. Nothing in between can bring up a revision, because the Cloud Run service
 is not in the targeted plan.
 
-`-target` is normally a smell, and the reason this one is tolerable is that it names a _module_
-rather than a list of resources: anything added to `infra/modules/database` is covered by the
-first pass automatically. That is also the rule to keep — a resource the migration depends on
-belongs in that module, not in the root.
+Terraform says `-target` is not for routine use, so the first pass always warns that targeting is in effect and may be incomplete. Expected: the untargeted apply minutes later is the verification the warning asks for. It names a _module_ rather than a list of resources, which is the rule to keep — a resource the migration depends on belongs in `infra/modules/database`, not in the root.
+
+The alternative is `ignore_changes` on the Cloud Run image and a `gcloud run services update` after the migration. That drops the image out of state, so `terraform plan` stops answering what is live.
 
 ## Manual operations
 
@@ -182,7 +181,4 @@ connector is the only way in.
 
 ## Costs
 
-The defaults are the small end of every knob: `db-f1-micro` Cloud SQL with 10 GB of storage,
-Cloud Run scaled to zero with a ceiling of four instances, and Vercel's Hobby allowances. Cloud
-SQL is the only part that bills whether or not anyone visits, since it cannot scale to zero.
-`api_min_instances` trades a cold start on the first request for a warm instance you pay for.
+The defaults are the small end of every knob: `db-f1-micro` Cloud SQL with 10 GB of storage, Cloud Run scaled to zero with a ceiling of four instances, and Vercel's Hobby allowances. Cloud SQL is the only part that bills whether or not anyone visits, since it cannot scale to zero. `api_min_instances` trades a cold start on the first request for a warm instance you pay for.
