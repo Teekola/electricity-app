@@ -5,6 +5,13 @@ help: ## Show this help
 	@grep -hE '^[a-zA-Z0-9_-]+:.*?## ' $(MAKEFILE_LIST) \
 		| awk 'BEGIN { FS = ":.*?## " } { printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2 }'
 
+# Only the .env files are missing from a fresh clone; both examples are already filled in for local use.
+.PHONY: setup
+setup: ## Install dependencies and create the .env files a fresh clone needs
+	pnpm install
+	@test -f apps/api/.env || cp apps/api/.env.example apps/api/.env
+	@test -f apps/web/.env || cp apps/web/.env.example apps/web/.env
+
 .PHONY: dev
 dev: db-up ## Start the database, then every dev server on the host
 	pnpm dev
@@ -35,8 +42,8 @@ up: ## Run the full containerised stack: Postgres, Adminer and the API image
 	docker compose up -d --build --wait
 
 .PHONY: down
-down: ## Stop the containers, keeping the seeded volume
-	docker compose down
+down: ## Stop and remove the containers, and the database volume they would otherwise orphan
+	docker compose down -v
 
 .PHONY: db-reset
 db-reset: ## Drop the volume and re-seed from db/init-db.tar.gz
