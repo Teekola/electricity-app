@@ -6,7 +6,7 @@ import {
   DailyStatisticsTable,
   DailyStatisticsTableSkeleton,
 } from "@/components/daily-statistics-table";
-import { DaysFilters } from "@/components/days-filters";
+import { DaysFilters, DaysFiltersSkeleton } from "@/components/days-filters";
 import { DaysNavigationProvider } from "@/components/days-navigation";
 import { DaysPageSize } from "@/components/days-page-size";
 import { DaysPagination } from "@/components/days-pagination";
@@ -47,9 +47,9 @@ function DailyStatisticsLayout({ children }: { readonly children: ReactNode }) {
 function DailyStatisticsPlaceholder({ size }: { readonly size?: number }) {
   return (
     <>
-      {/* Holds the filter bar's height, so the controls do not shift down as the rows land. */}
-      <div className="min-h-9 shrink-0" />
+      <DaysFiltersSkeleton />
       <DailyStatisticsTableSkeleton size={size} />
+      <div className="min-h-9 shrink-0" />
     </>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarDays, RotateCcw, SlidersHorizontal, X } from "lucide-react";
-import { type SyntheticEvent, useState } from "react";
+import { type ReactNode, type SyntheticEvent, useState } from "react";
 import type { DateRange } from "react-day-picker";
 
 import type { DailyStatisticsMeasure, DaysQuery, IsoDate } from "@repo/api-contract";
@@ -23,6 +23,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { Skeleton } from "@/components/ui/skeleton";
 import { fromIsoDate, toIsoDate } from "@/lib/day";
 import {
   describeDateRange,
@@ -55,7 +56,7 @@ export function DaysFilters({ knownDay }: DaysFiltersProps) {
   const measures = filteredMeasures(query);
 
   return (
-    <div className="flex min-h-9 shrink-0 flex-wrap items-center gap-2">
+    <DaysFiltersLayout>
       <DateRangeFilter knownDay={knownDay} />
       <MeasureFilters />
       {measures.map((measure) => (
@@ -77,8 +78,21 @@ export function DaysFilters({ knownDay }: DaysFiltersProps) {
           Reset
         </Button>
       )}
-    </div>
+    </DaysFiltersLayout>
   );
+}
+
+export function DaysFiltersSkeleton() {
+  return (
+    <DaysFiltersLayout>
+      <Skeleton className="h-7 w-21" />
+      <Skeleton className="h-7 w-19" />
+    </DaysFiltersLayout>
+  );
+}
+
+function DaysFiltersLayout({ children }: { readonly children: ReactNode }) {
+  return <div className="flex min-h-9 shrink-0 flex-wrap items-center gap-2">{children}</div>;
 }
 
 function DateRangeFilter({ knownDay }: DaysFiltersProps) {

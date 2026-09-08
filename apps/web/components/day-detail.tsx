@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
+import { Suspense } from "react";
 
 import type {
   CheapestHour,
@@ -47,35 +48,66 @@ export interface DayDetailProps {
   readonly searchParams: Promise<SearchParams>;
 }
 
-export async function DayDetail({ params, searchParams }: DayDetailProps) {
-  const [{ date }, search] = await Promise.all([params, searchParams]);
-  const day = isoDateSchema.safeParse(date);
+export function DayDetail({ params, searchParams }: DayDetailProps) {
+  return (
+    <>
+      <PageHeader
+        breadcrumb={
+          <Suspense fallback={<Skeleton className="h-4 w-40" />}>
+            <DayBreadcrumb params={params} searchParams={searchParams} />
+          </Suspense>
+        }
+        heading={
+          <Suspense fallback={<Skeleton className="h-9 w-80" />}>
+            <DayHeading params={params} />
+          </Suspense>
+        }
+      />
+      <Suspense fallback={<DayDetailBodyFallback />}>
+        <DayDetailBody params={params} />
+      </Suspense>
+    </>
+  );
+}
+
+async function readDate(params: DayDetailProps["params"]): Promise<IsoDate> {
+  const day = isoDateSchema.safeParse((await params).date);
 
   // A segment that is not a date never reaches a fetch.
   if (!day.success) notFound();
 
-  const dayDetail = await getDayDetail(day.data);
+  return day.data;
+}
+
+async function DayHeading({ params }: Pick<DayDetailProps, "params">) {
+  return dayDetailTitle(await readDate(params));
+}
+
+async function DayBreadcrumb({ params, searchParams }: DayDetailProps) {
+  const [date, search] = await Promise.all([readDate(params), searchParams]);
+
+  return (
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink render={<Link href={listHref(search)} />}>All days</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage>{formatDay(date)}</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
+
+async function DayDetailBody({ params }: Pick<DayDetailProps, "params">) {
+  const dayDetail = await getDayDetail(await readDate(params));
 
   if (dayDetail === null) notFound();
 
   return (
     <>
-      <PageHeader
-        breadcrumb={
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink render={<Link href={listHref(search)} />}>All days</BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator />
-              <BreadcrumbItem>
-                <BreadcrumbPage>{formatDay(day.data)}</BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
-        }
-        heading={dayDetailTitle(day.data)}
-      />
       <DayDetailFigures
         dailyStatistics={dayDetail.dailyStatistics}
         peakConsumptionRatioHours={dayDetail.peakConsumptionRatioHours}
@@ -86,24 +118,6 @@ export async function DayDetail({ params, searchParams }: DayDetailProps) {
         cheapestHours={dayDetail.cheapestHours}
         hasConsumption={dayDetail.dailyStatistics.totalConsumptionMwh !== null}
       />
-    </>
-  );
-}
-
-export function DayDetailFallback() {
-  return (
-    <>
-      <PageHeader
-        breadcrumb={<Skeleton className="h-4 w-40" />}
-        heading={<Skeleton className="h-8 w-80" />}
-      />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 6 }, (_, index) => (
-          <Skeleton key={index} className="h-24 w-full" />
-        ))}
-      </div>
-      <Skeleton className="h-80 w-full" />
-      <Skeleton className="h-80 w-full" />
     </>
   );
 }
@@ -234,10 +248,25 @@ function Figure({
 
 function FigureCard({ label, children }: { readonly label: string; readonly children: ReactNode }) {
   return (
-    <div className="rounded-none border p-4">
+    <div className="min-h-31.5 rounded-none border p-4 lg:min-h-27.5">
       <p className="text-sm text-muted-foreground">{label}</p>
       {children}
     </div>
+  );
+}
+
+function DayDetailBodyFallback() {
+  return (
+    <>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {Array.from({ length: 5 }, (_, index) => (
+          <Skeleton key={index} className="min-h-31.5 w-full lg:min-h-27.5" />
+        ))}
+        <Skeleton className="min-h-32.5 w-full" />
+      </div>
+      <Skeleton className="h-93.5 w-full md:h-88.5" />
+      <Skeleton className="h-93.5 w-full md:h-88.5" />
+    </>
   );
 }
 
@@ -292,7 +321,7 @@ function ChartSection({
     <section className="space-y-3 rounded-none border p-4">
       <div className="space-y-1">
         <h2 className="text-lg font-medium">{title}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <p className="min-h-10 text-sm text-muted-foreground md:min-h-0">{description}</p>
       </div>
       {children}
     </section>
