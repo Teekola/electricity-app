@@ -1,7 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
-import { Suspense } from "react";
 
 import type {
   CheapestHour,
@@ -13,20 +12,10 @@ import type {
 import { isoDateSchema } from "@repo/api-contract";
 
 import { DayPriceChart, DayProductionChart } from "@/components/day-charts";
-import { DaysLink, DaysLinkFallback } from "@/components/days-link";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-  BreadcrumbSeparator,
-} from "@/components/ui/breadcrumb";
 import { Skeleton } from "@/components/ui/skeleton";
 import { rankCheapestHours } from "@/lib/cheapest-hours";
 import { getDayDetail } from "@/lib/day-detail";
 import {
-  formatDay,
-  formatDayDetailTitle,
   formatHourlyPrice,
   formatMwh,
   formatPercent,
@@ -45,30 +34,6 @@ async function readDate(params: DayParams): Promise<IsoDate> {
   if (!day.success) notFound();
 
   return day.data;
-}
-
-export async function DayHeading({ params }: { readonly params: DayParams }) {
-  return formatDayDetailTitle(await readDate(params));
-}
-
-export async function DayBreadcrumb({ params }: { readonly params: DayParams }) {
-  const date = await readDate(params);
-
-  return (
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
-          <Suspense fallback={<DaysLinkFallback />}>
-            <DaysLink />
-          </Suspense>
-        </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
-          <BreadcrumbPage>{formatDay(date)}</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-  );
 }
 
 export async function DayDetailBody({ params }: { readonly params: DayParams }) {

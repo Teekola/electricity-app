@@ -2,6 +2,11 @@
   "recommendations": [
     "esbenp.prettier-vscode",
     "dbaeumer.vscode-eslint",
-    "bradlc.vscode-tailwindcss"
+    "bradlc.vscode-tailwindcss",
+    "prisma.prisma",
+    "vitest.explorer",
+    "ms-playwright.playwright",
+    "hashicorp.terraform",
+    "github.vscode-github-actions"
   ]
 }
