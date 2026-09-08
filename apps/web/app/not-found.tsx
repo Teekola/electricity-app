@@ -15,7 +15,7 @@ export default function NotFound() {
       </header>
       <Link href="/" className={buttonVariants({ variant: "outline", size: "sm" })}>
         <ChevronLeft aria-hidden />
-        All days
+        Days
       </Link>
     </main>
   );

@@ -42,7 +42,8 @@ The integration tests read the seeded database rather than mocking it, so the co
 up first. Nothing in this app writes to the database, so the tests cannot pollute it.
 
 `make check` runs the whole set CI runs — lint, typecheck, tests and both builds — and starts the
-database itself. Formatting is not in it: `lint-staged` already applies Prettier on commit.
+database and the API itself, because the web build prerenders Day Details against it. Formatting is
+not in it: `lint-staged` already applies Prettier on commit.
 
 ## End-to-end tests
 
@@ -57,7 +58,7 @@ make e2e
 browser's system libraries, which needs root, so it asks for your sudo password. On macOS and
 Windows there are no such libraries and it only downloads the browser.
 
-`make e2e` starts the database, builds both apps, and runs the suite against those production
+`make e2e` starts the database and the API, builds both apps, and runs the suite against those production
 builds on ports 3100 and 3101 — deliberately not 3000 and 3001, so a suite run cannot attach
 itself to a dev server you happen to have open. The report lands in
 `packages/e2e/playwright-report/`.

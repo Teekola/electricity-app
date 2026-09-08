@@ -30,6 +30,17 @@ export type MeasureRanges = Record<MeasureBound, number | undefined>;
 /** The search params Next hands a page: a repeated parameter arrives as an array. */
 export type SearchParams = Record<string, string | string[] | undefined>;
 
+/** `useSearchParams` hands back a `URLSearchParams`, which keeps repeats flat rather than nested. */
+export function readUrlSearchParams(params: URLSearchParams): SearchParams {
+  return Object.fromEntries(
+    [...new Set(params.keys())].map((key) => {
+      const values = params.getAll(key);
+
+      return [key, values.length === 1 ? values[0] : values];
+    }),
+  );
+}
+
 /**
  * Each field falls back on its own, so one bad parameter cannot discard the reader's other
  * choices.
