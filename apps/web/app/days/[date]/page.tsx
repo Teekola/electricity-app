@@ -3,14 +3,9 @@ import { Suspense } from "react";
 
 import { daysQuerySchema, isoDateSchema } from "@repo/api-contract";
 
-import {
-  DayBreadcrumb,
-  DayDetailBody,
-  DayDetailBodyFallback,
-  DayHeading,
-} from "@/components/day-detail";
+import { DayDetailBody, DayDetailBodyFallback } from "@/components/day-detail";
+import { DayBreadcrumb, DayHeading } from "@/components/day-header";
 import { PageHeader } from "@/components/page-header";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getDaysWithStatistics } from "@/lib/days";
 import { formatDayDetailTitle } from "@/lib/format";
 
@@ -31,18 +26,7 @@ export async function generateMetadata({ params }: PageProps<"/days/[date]">): P
 export default function Page({ params }: PageProps<"/days/[date]">) {
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 md:px-8">
-      <PageHeader
-        breadcrumb={
-          <Suspense fallback={<Skeleton className="h-4 w-40" />}>
-            <DayBreadcrumb params={params} />
-          </Suspense>
-        }
-        heading={
-          <Suspense fallback={<Skeleton className="h-9 w-80" />}>
-            <DayHeading params={params} />
-          </Suspense>
-        }
-      />
+      <PageHeader breadcrumb={<DayBreadcrumb />} heading={<DayHeading />} />
       <Suspense fallback={<DayDetailBodyFallback />}>
         <DayDetailBody params={params} />
       </Suspense>
