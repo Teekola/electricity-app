@@ -34,6 +34,9 @@
     "@repo/e2e#test": {
       "dependsOn": []
     },
+    "@repo/e2e#dev": {
+      "dependsOn": []
+    },
     "e2e": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/db/**", "$TURBO_ROOT$/docker-compose.yml"],
