@@ -18,6 +18,8 @@ export async function generateStaticParams(): Promise<{ date: string }[]> {
 }
 
 export async function generateMetadata({ params }: PageProps<"/days/[date]">): Promise<Metadata> {
+  "use cache";
+
   const day = isoDateSchema.safeParse((await params).date);
 
   return { title: day.success ? formatDayDetailTitle(day.data) : "Electricity data" };

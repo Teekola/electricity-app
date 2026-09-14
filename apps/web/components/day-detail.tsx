@@ -6,7 +6,6 @@ import type {
   CheapestHour,
   DataPoint,
   DayDetail as DayDetailData,
-  IsoDate,
   PeakConsumptionRatioHour,
 } from "@repo/api-contract";
 import { isoDateSchema } from "@repo/api-contract";
@@ -27,25 +26,17 @@ import { joinWithAnd } from "@/lib/list-phrase";
 
 type DayParams = Promise<{ date: string }>;
 
-async function readDate(params: DayParams): Promise<IsoDate> {
+export async function DayDetailBody({ params }: { readonly params: DayParams }) {
+  "use cache";
+  cacheLife("max");
+  cacheTag("day-detail");
+
   const day = isoDateSchema.safeParse((await params).date);
 
   // A segment that is not a date never reaches a fetch.
   if (!day.success) notFound();
 
-  return day.data;
-}
-
-export async function DayDetailBody({ params }: { readonly params: DayParams }) {
-  return <DayFiguresAndCharts date={await readDate(params)} />;
-}
-
-async function DayFiguresAndCharts({ date }: { readonly date: IsoDate }) {
-  "use cache";
-  cacheLife("max");
-  cacheTag("day-detail");
-
-  const dayDetail = await getDayDetail(date);
+  const dayDetail = await getDayDetail(day.data);
 
   if (dayDetail === null) notFound();
 
