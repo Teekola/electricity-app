@@ -3,8 +3,8 @@
 ## Requirements
 
 - Docker, running, with Compose v2 (`docker compose`), which hosts the seeded PostgreSQL database
-- Node 24: the exact version is in `.nvmrc`, which nvm, fnm and mise all read, and `pnpm install` refuses to run on anything else
-- pnpm
+- Node 24 or newer: the version this was developed against is in `.nvmrc`, which nvm, fnm and mise all read, and `pnpm install` refuses to run on anything older
+- pnpm: `corepack enable` provisions the version this repo pins, or install it yourself with `npm install -g pnpm`
 
 `make help` lists every target mentioned below. If `make` is not available, each target's body in the `Makefile` is one or two commands you can run directly.
 
